@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Control de Tareas{% endblock %}
+{% block page_title %}Panel Principal{% endblock %}
+{% block page_subtitle %}
+    {% if personal %}{{ personal.departamento.nombre }}{% else %}Vista general{% endif %}
+    &mdash; {{ hoy|date:"l, d \d\e F \d\e Y" }}
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon bg-blue"><i class="fas fa-list"></i></div>
+        <div class="stat-info">
+            <div class="value" style="color:var(--primary)">{{ stats.total }}</div>
+            <div class="label">Total de Tareas</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-yellow"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <div class="value" style="color:var(--warning)">{{ stats.pendientes }}</div>
+            <div class="label">Pendientes</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-cyan"><i class="fas fa-spinner"></i></div>
+        <div class="stat-info">
+            <div class="value" style="color:var(--info)">{{ stats.en_progreso }}</div>
+            <div class="label">En Progreso</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="value" style="color:var(--success)">{{ stats.completadas }}</div>
+            <div class="label">Completadas</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-red"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-info">
+            <div class="value" style="color:var(--danger)">{{ stats.vencidas }}</div>
+            <div class="label">Vencidas</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+    <!-- Tareas recientes -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-history" style="color:var(--primary);margin-right:8px"></i>Tareas Recientes</h3>
+            <a href="{% url 'tareas:lista_tareas' %}" class="btn btn-outline btn-sm">Ver todas</a>
+        </div>
+        <div class="card-body" style="padding:0">
+            {% if tareas_recientes %}
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Tarea</th><th>Estado</th><th>Asignada a</th></tr></thead>
+                    <tbody>
+                    {% for t in tareas_recientes %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'tareas:detalle_tarea' t.pk %}" style="font-weight:500;color:var(--text);text-decoration:none">
+                                {{ t.titulo|truncatechars:40 }}
+                            </a>
+                            <div style="font-size:12px;color:var(--text-muted)">{{ t.fecha_creacion|date:"d/m/Y" }}</div>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ t.estado|lower }}">{{ t.get_estado_display }}</span>
+                        </td>
+                        <td style="font-size:13px">{{ t.asignada_a.get_nombre_completo }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-inbox"></i><h3>Sin tareas recientes</h3></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tareas vencidas -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-exclamation-triangle" style="color:var(--danger);margin-right:8px"></i>Tareas Vencidas</h3>
+            <span class="badge badge-vencida">{{ stats.vencidas }} vencidas</span>
+        </div>
+        <div class="card-body" style="padding:0">
+            {% if tareas_vencidas %}
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Tarea</th><th>Venció el</th><th>Asignada a</th></tr></thead>
+                    <tbody>
+                    {% for t in tareas_vencidas %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'tareas:detalle_tarea' t.pk %}" style="font-weight:500;color:var(--danger);text-decoration:none">
+                                {{ t.titulo|truncatechars:40 }}
+                            </a>
+                        </td>
+                        <td style="color:var(--danger);font-size:13px;font-weight:500">{{ t.fecha_fin_planificada|date:"d/m/Y" }}</td>
+                        <td style="font-size:13px">{{ t.asignada_a.get_nombre_completo }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-check-double" style="color:var(--success)"></i>
+                <h3 style="color:var(--success)">¡Sin tareas vencidas!</h3>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_pagina }} — Control de Tareas{% endblock %}
+{% block page_title %}{{ titulo_pagina }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'tareas:lista_tareas' %}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Volver al Listado
+</a>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Carga dinámica de parroquias según el municipio seleccionado
+document.getElementById('id_municipio').addEventListener('change', function() {
+    const municipioId = this.value;
+    const parroquiaSelect = document.getElementById('id_parroquia');
+    parroquiaSelect.innerHTML = '<option value="">---------</option>';
+    if (municipioId) {
+        fetch(`/ajax/parroquias/?municipio_id=${municipioId}`)
+            .then(r => r.json())
+            .then(data => {
+                data.parroquias.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.nombre;
+                    parroquiaSelect.appendChild(opt);
+                });
+            });
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:860px;margin:0 auto">
+    <div class="card-header">
+        <h3><i class="fas fa-{% if accion == 'Crear' %}plus{% else %}edit{% endif %}" style="color:var(--primary);margin-right:8px"></i>{{ titulo_pagina }}</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Información general -->
+            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                <i class="fas fa-info-circle" style="margin-right:6px"></i> Información General
+            </h4>
+            <div class="form-group">
+                <label class="form-label">{{ form.titulo.label }}</label>
+                {{ form.titulo }}
+                {% if form.titulo.errors %}<ul class="errorlist">{% for e in form.titulo.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label">{{ form.descripcion.label }}</label>
+                {{ form.descripcion }}
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ form.prioridad.label }}</label>
+                    {{ form.prioridad }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.estado.label }}</label>
+                    {{ form.estado }}
+                </div>
+            </div>
+
+            <!-- Asignación -->
+            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                <i class="fas fa-users" style="margin-right:6px"></i> Asignación
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ form.asignada_a.label }}</label>
+                    {{ form.asignada_a }}
+                    {% if form.asignada_a.errors %}<ul class="errorlist">{% for e in form.asignada_a.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.departamento.label }}</label>
+                    {{ form.departamento }}
+                    {% if form.departamento.errors %}<ul class="errorlist">{% for e in form.departamento.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+
+            <!-- Fechas -->
+            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                <i class="fas fa-calendar" style="margin-right:6px"></i> Fechas
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ form.fecha_inicio_planificada.label }}</label>
+                    {{ form.fecha_inicio_planificada }}
+                    {% if form.fecha_inicio_planificada.errors %}<ul class="errorlist">{% for e in form.fecha_inicio_planificada.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.fecha_fin_planificada.label }}</label>
+                    {{ form.fecha_fin_planificada }}
+                    {% if form.fecha_fin_planificada.errors %}<ul class="errorlist">{% for e in form.fecha_fin_planificada.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+            <div class="form-group" style="max-width:320px">
+                <label class="form-label">{{ form.fecha_fin_real.label }}</label>
+                {{ form.fecha_fin_real }}
+                <p class="form-text">{{ form.fecha_fin_real.help_text }}</p>
+            </div>
+
+            <!-- Ubicación geográfica -->
+            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                <i class="fas fa-map-marker-alt" style="margin-right:6px"></i> Ubicación Geográfica (Opcional)
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ form.municipio.label }}</label>
+                    {{ form.municipio }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.parroquia.label }}</label>
+                    {{ form.parroquia }}
+                    <p class="form-text">Selecciona primero el municipio para cargar las parroquias.</p>
+                </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-group">
+                <label class="form-label">{{ form.observaciones.label }}</label>
+                {{ form.observaciones }}
+            </div>
+
+            <!-- Botones -->
+            <div style="display:flex;gap:12px;margin-top:8px">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ accion }}
+                </button>
+                <a href="{% url 'tareas:lista_tareas' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar Tarea — Control de Tareas{% endblock %}
+{% block page_title %}Eliminar Tarea{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'tareas:detalle_tarea' tarea.pk %}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Cancelar
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:500px;margin:0 auto">
+    <div class="card-header">
+        <h3 style="color:var(--danger)"><i class="fas fa-trash" style="margin-right:8px"></i>Confirmar Eliminación</h3>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            Esta acción <strong>no se puede deshacer</strong>.
+        </div>
+        <p style="font-size:15px;margin-bottom:24px">
+            ¿Estás seguro que deseas eliminar la tarea
+            <strong>«{{ tarea.titulo }}»</strong>?
+        </p>
+        <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:24px;font-size:13px">
+            <div><strong>Asignada a:</strong> {{ tarea.asignada_a.get_nombre_completo }}</div>
+            <div><strong>Estado:</strong> {{ tarea.get_estado_display }}</div>
+            <div><strong>Creada el:</strong> {{ tarea.fecha_creacion|date:"d/m/Y" }}</div>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div style="display:flex;gap:12px">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Sí, Eliminar
+                </button>
+                <a href="{% url 'tareas:detalle_tarea' tarea.pk %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

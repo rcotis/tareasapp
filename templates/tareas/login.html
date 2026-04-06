@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Ingresar — Control de Tareas{% endblock %}
+
+{% block auth_content %}
+<style>
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+    }
+    .login-card {
+        background: white;
+        border-radius: 20px;
+        padding: 48px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .login-logo {
+        width: 60px; height: 60px;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px; color: white;
+        margin: 0 auto 20px;
+    }
+    .login-title { text-align: center; margin-bottom: 32px; }
+    .login-title h1 { font-size: 22px; font-weight: 700; color: #0f172a; }
+    .login-title p { font-size: 14px; color: #64748b; margin-top: 4px; }
+    .login-card .form-control { padding: 12px 14px; }
+    .btn-login {
+        width: 100%; padding: 12px;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white; border: none; border-radius: 10px;
+        font-size: 15px; font-weight: 600; cursor: pointer;
+        transition: all .2s; margin-top: 8px;
+    }
+    .btn-login:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(37,99,235,.4); }
+    .login-footer { text-align: center; margin-top: 24px; font-size: 13px; color: #94a3b8; }
+</style>
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-logo"><i class="fas fa-tasks"></i></div>
+        <div class="login-title">
+            <h1>Control de Tareas</h1>
+            <p>Ingresa tus credenciales para continuar</p>
+        </div>
+
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags|default:'error' }}" style="margin-bottom:16px">
+            <i class="fas fa-exclamation-circle"></i> {{ msg }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label" for="{{ form.username.id_for_label }}">
+                    <i class="fas fa-user" style="color:#94a3b8;margin-right:6px"></i>Usuario
+                </label>
+                {{ form.username }}
+                {% if form.username.errors %}<ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="{{ form.password.id_for_label }}">
+                    <i class="fas fa-lock" style="color:#94a3b8;margin-right:6px"></i>Contraseña
+                </label>
+                {{ form.password }}
+                {% if form.password.errors %}<ul class="errorlist">{% for e in form.password.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            {% if form.non_field_errors %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+            </div>
+            {% endif %}
+            <button type="submit" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
+            </button>
+        </form>
+        <p class="login-footer">Sistema de Control de Actividades de Oficina</p>
+    </div>
+</div>
+{% endblock %}

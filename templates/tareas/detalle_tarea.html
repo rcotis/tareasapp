@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tarea.titulo }} — Control de Tareas{% endblock %}
+{% block page_title %}Detalle de Tarea{% endblock %}
+{% block page_subtitle %}{{ tarea.departamento.nombre }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'tareas:lista_tareas' %}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Volver
+</a>
+<a href="{% url 'tareas:editar_tarea' tarea.pk %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-edit"></i> Editar
+</a>
+<a href="{% url 'tareas:eliminar_tarea' tarea.pk %}" class="btn btn-sm"
+   style="background:var(--danger-light);color:var(--danger)">
+    <i class="fas fa-trash"></i>
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Encabezado de la tarea -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+            <div>
+                <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">
+                    {{ tarea.titulo }}
+                    {% if tarea.esta_vencida %}
+                    <span class="badge badge-vencida" style="font-size:13px">
+                        <i class="fas fa-exclamation-triangle"></i> Vencida
+                    </span>
+                    {% endif %}
+                </h2>
+                {% if tarea.descripcion %}
+                <p style="color:var(--text-muted);font-size:14px;line-height:1.6">{{ tarea.descripcion }}</p>
+                {% endif %}
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0">
+                <span class="badge badge-{{ tarea.estado|lower }}" style="font-size:13px;padding:6px 14px">
+                    {{ tarea.get_estado_display }}
+                </span>
+                <span class="badge badge-{{ tarea.prioridad|lower }}" style="font-size:13px;padding:6px 14px">
+                    {{ tarea.get_prioridad_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detalles -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- Asignación -->
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-users" style="color:var(--primary);margin-right:8px"></i>Asignación</h3></div>
+        <div class="card-body">
+            <div class="detail-item">
+                <div class="detail-label">Asignada a</div>
+                <div class="detail-value" style="font-size:16px">{{ tarea.asignada_a.get_nombre_completo }}</div>
+                <div style="font-size:13px;color:var(--text-muted)">{{ tarea.asignada_a.cargo }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Departamento Responsable</div>
+                <div class="detail-value">{{ tarea.departamento.nombre }}</div>
+                <div style="font-size:12px;color:var(--text-muted)">{{ tarea.departamento.get_nivel_display }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Creada por</div>
+                <div class="detail-value">{{ tarea.creada_por.get_nombre_completo }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Fecha de Creación</div>
+                <div class="detail-value">{{ tarea.fecha_creacion|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fechas -->
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-calendar" style="color:var(--primary);margin-right:8px"></i>Fechas</h3></div>
+        <div class="card-body">
+            <div class="detail-item">
+                <div class="detail-label">Fecha de Inicio Planificada</div>
+                <div class="detail-value">{{ tarea.fecha_inicio_planificada|date:"d/m/Y" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Fecha de Culminación Planificada</div>
+                <div class="detail-value {% if tarea.esta_vencida %}" style="color:var(--danger){% endif %}">
+                    {{ tarea.fecha_fin_planificada|date:"d/m/Y" }}
+                    {% if tarea.esta_vencida %}
+                    <i class="fas fa-exclamation-triangle" style="color:var(--danger);margin-left:4px"></i>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Fecha de Finalización Real</div>
+                <div class="detail-value">
+                    {% if tarea.fecha_fin_real %}
+                        {{ tarea.fecha_fin_real|date:"d/m/Y" }}
+                        {% if tarea.tiene_retraso %}
+                        <span class="badge" style="background:#fff7ed;color:#9a3412;margin-left:6px">
+                            <i class="fas fa-clock"></i> Con retraso
+                        </span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color:var(--text-muted)">No registrada aún</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ubicación -->
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:8px"></i>Ubicación Geográfica</h3></div>
+        <div class="card-body">
+            {% if tarea.municipio %}
+            <div class="detail-item">
+                <div class="detail-label">Municipio</div>
+                <div class="detail-value">{{ tarea.municipio.nombre }}</div>
+            </div>
+            {% endif %}
+            {% if tarea.parroquia %}
+            <div class="detail-item">
+                <div class="detail-label">Parroquia</div>
+                <div class="detail-value">{{ tarea.parroquia.nombre }}</div>
+            </div>
+            {% endif %}
+            {% if not tarea.municipio and not tarea.parroquia %}
+            <p style="color:var(--text-muted);font-size:14px">Sin ubicación geográfica asignada.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Observaciones -->
+    {% if tarea.observaciones %}
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-comment-dots" style="color:var(--primary);margin-right:8px"></i>Observaciones</h3></div>
+        <div class="card-body">
+            <p style="font-size:14px;line-height:1.6">{{ tarea.observaciones }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

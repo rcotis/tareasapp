@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Listado de Tareas — Control de Tareas{% endblock %}
+{% block page_title %}Mis Tareas{% endblock %}
+{% block page_subtitle %}Listado de tareas asignadas y subordinados{% endblock %}
+
+{% block content %}
+
+<!-- Filtros -->
+<form method="get" class="filters-bar">
+    <div class="filter-group" style="flex:2;min-width:200px">
+        <label>Buscar</label>
+        <input type="text" name="q" value="{{ filtros.q }}" class="form-control"
+               placeholder="Título, descripción, persona..." style="min-width:200px">
+    </div>
+    <div class="filter-group">
+        <label>Estado</label>
+        <select name="estado" class="form-select">
+            <option value="">Todos</option>
+            {% for val, label in estado_choices %}
+            <option value="{{ val }}" {% if filtros.estado == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Prioridad</label>
+        <select name="prioridad" class="form-select">
+            <option value="">Todas</option>
+            {% for val, label in prioridad_choices %}
+            <option value="{{ val }}" {% if filtros.prioridad == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Municipio</label>
+        <select name="municipio" class="form-select">
+            <option value="">Todos</option>
+            {% for m in municipios %}
+            <option value="{{ m.id }}" {% if filtros.municipio == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group" style="flex-direction:row;align-items:flex-end;gap:8px">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Filtrar</button>
+        <a href="{% url 'tareas:lista_tareas' %}" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Limpiar</a>
+    </div>
+</form>
+
+<!-- Tabla -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px"></i>
+            {{ tareas|length }} tarea{{ tareas|length|pluralize }} encontrada{{ tareas|length|pluralize }}
+        </h3>
+        <a href="{% url 'tareas:crear_tarea' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> Nueva Tarea
+        </a>
+    </div>
+    {% if tareas %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tarea</th>
+                    <th>Asignada a</th>
+                    <th>Departamento</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Inicio</th>
+                    <th>Culminación Plan.</th>
+                    <th>Fin Real</th>
+                    <th>Municipio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for t in tareas %}
+            <tr {% if t.esta_vencida %}style="background:#fff5f5"{% endif %}>
+                <td>
+                    <a href="{% url 'tareas:detalle_tarea' t.pk %}"
+                       style="font-weight:600;color:var(--text);text-decoration:none">
+                        {{ t.titulo|truncatechars:45 }}
+                    </a>
+                    {% if t.esta_vencida %}
+                    <span class="badge badge-vencida" style="margin-left:6px">
+                        <i class="fas fa-exclamation-triangle"></i> Vencida
+                    </span>
+                    {% endif %}
+                    {% if t.tiene_retraso %}
+                    <span class="badge" style="background:#fff7ed;color:#9a3412;margin-left:4px">
+                        <i class="fas fa-clock"></i> Con retraso
+                    </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="font-size:13px;font-weight:500">{{ t.asignada_a.get_nombre_completo }}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">{{ t.asignada_a.cargo }}</div>
+                </td>
+                <td style="font-size:13px">{{ t.departamento.nombre }}</td>
+                <td><span class="badge badge-{{ t.estado|lower }}">{{ t.get_estado_display }}</span></td>
+                <td><span class="badge badge-{{ t.prioridad|lower }}">{{ t.get_prioridad_display }}</span></td>
+                <td style="font-size:13px">{{ t.fecha_inicio_planificada|date:"d/m/Y" }}</td>
+                <td style="font-size:13px;{% if t.esta_vencida %}color:var(--danger);font-weight:600{% endif %}">
+                    {{ t.fecha_fin_planificada|date:"d/m/Y" }}
+                </td>
+                <td style="font-size:13px">
+                    {% if t.fecha_fin_real %}
+                        {{ t.fecha_fin_real|date:"d/m/Y" }}
+                    {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                </td>
+                <td style="font-size:13px">{{ t.municipio|default:"—" }}</td>
+                <td>
+                    <div style="display:flex;gap:6px">
+                        <a href="{% url 'tareas:editar_tarea' t.pk %}" class="btn btn-outline btn-icon btn-sm" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'tareas:eliminar_tarea' t.pk %}" class="btn btn-icon btn-sm"
+                           style="background:var(--danger-light);color:var(--danger)" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>No se encontraron tareas</h3>
+        <p>Prueba con otros filtros o <a href="{% url 'tareas:crear_tarea' %}">crea una nueva tarea</a>.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
