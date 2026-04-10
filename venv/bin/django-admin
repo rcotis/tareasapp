@@ -1,4 +1,4 @@
-#!/home/regino/Documentos/tareasapp/venv/bin/python3
+#!/home/jefe/tareasapp/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

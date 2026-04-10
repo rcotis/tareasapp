@@ -1,2 +1,6 @@
-usuario: tareauser
-clave:12345678
+# Nombre BD: tareasuser
+# usuario BD: tareauser
+# clave :12345678
+#Uduario admin Django
+#usuario: admin
+#clave: biblioteca
