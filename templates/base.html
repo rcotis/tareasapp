@@ -728,7 +728,11 @@
             <a href="{% url 'tareas:lista_personal' %}" class="nav-item {% if request.resolver_match.url_name == 'lista_personal' %}active{% endif %}">
                 <i class="fas fa-users"></i> Directorio de Personal
             </a>
-            {% if user.is_staff %}
+            <div class="nav-section">Cuenta</div>
+            <a href="{% url 'tareas:cambio_password' %}" class="nav-item {% if request.resolver_match.url_name == 'cambio_password' %}active{% endif %}">
+                <i class="fas fa-key"></i> Cambiar Contraseña
+            </a>
+{% if user.is_staff %}
             <div class="nav-section">Administración</div>
             <a href="{% url 'tareas:lista_usuarios' %}" class="nav-item {% if request.resolver_match.url_name == 'lista_usuarios' %}active{% endif %}">
                 <i class="fas fa-user-shield"></i> Gestión de Usuarios

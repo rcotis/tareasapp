@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -8,7 +8,7 @@ from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from .models import Tarea, Personal, Municipio, Parroquia, Departamento, HistorialMovimientoPersonal
 from .forms import TareaForm, LoginForm, PersonalForm, CambioEstadoPersonalForm, VerificarCedulaForm, VincularUsuarioForm
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
 
 
 # ============================================================
@@ -33,6 +33,24 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('tareas:login')
+
+
+@login_required
+def cambio_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Importante para no perder la sesión
+            messages.success(request, 'Tu contraseña ha sido actualizada exitosamente.')
+            return redirect('tareas:dashboard')
+        else:
+            messages.error(request, 'Por favor corrige los errores a continuación.')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'tareas/cambio_password.html', {
+        'form': form
+    })
 
 
 # ============================================================
@@ -302,7 +320,7 @@ def lista_personal(request):
         es_admin = request.user.is_staff
 
     # Paginación
-    paginator = Paginator(personal_list, 10) # 10 por página
+    paginator = Paginator(personal_list, 6) # 10 por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -505,7 +523,7 @@ def lista_usuarios(request):
         )
     
     # Paginación
-    paginator = Paginator(usuarios, 10) # 10 por página
+    paginator = Paginator(usuarios, 6) # 10 por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
