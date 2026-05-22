@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Ingresar — Control de Tareas{% endblock %}
+{% block title %}Crear tu Cuenta — Control de Tareas{% endblock %}
 
 {% block auth_content %}
 <style>
@@ -17,14 +17,14 @@
         border-radius: 20px;
         padding: 48px;
         width: 100%;
-        max-width: 420px;
+        max-width: 460px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     }
 
     .login-logo {
         width: 60px;
         height: 60px;
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        background: linear-gradient(135deg, #10b981, #059669);
         border-radius: 16px;
         display: flex;
         align-items: center;
@@ -36,7 +36,7 @@
 
     .login-title {
         text-align: center;
-        margin-bottom: 32px;
+        margin-bottom: 24px;
     }
 
     .login-title h1 {
@@ -51,14 +51,50 @@
         margin-top: 4px;
     }
 
-    .login-card .form-control {
-        padding: 12px 14px;
+    /* Styling elements of UserCreationForm */
+    .login-card input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 14px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+        box-sizing: border-box;
+    }
+
+    .login-card input:focus {
+        border-color: #2563eb;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .login-card label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #334155;
+    }
+
+    .login-card .helptext {
+        font-size: 11px;
+        color: #64748b;
+        display: block;
+        line-height: 1.4;
+        margin-bottom: 12px;
+    }
+
+    .login-card ul {
+        margin-top: 4px;
+        padding-left: 20px;
+        color: #ef4444;
+        font-size: 12px;
     }
 
     .btn-login {
         width: 100%;
         padding: 12px;
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        background: linear-gradient(135deg, #10b981, #059669);
         color: white;
         border: none;
         border-radius: 10px;
@@ -66,12 +102,12 @@
         font-weight: 600;
         cursor: pointer;
         transition: all .2s;
-        margin-top: 8px;
+        margin-top: 16px;
     }
 
     .btn-login:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 15px rgba(37, 99, 235, .4);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, .4);
     }
 
     .login-footer {
@@ -84,10 +120,10 @@
 
 <div class="login-page">
     <div class="login-card">
-        <div class="login-logo"><i class="fas fa-tasks"></i></div>
+        <div class="login-logo"><i class="fas fa-user-plus"></i></div>
         <div class="login-title">
-            <h1>Control de Tareas</h1>
-            <p>Ingresa tus credenciales para continuar</p>
+            <h1>Crea tu cuenta</h1>
+            <p>Hola, <strong>{{ persona.nombres }}</strong>. Crea un usuario y contraseña para acceder.</p>
         </div>
 
         {% if messages %}
@@ -100,44 +136,41 @@
 
         <form method="post">
             {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label" for="{{ form.username.id_for_label }}">
-                    <i class="fas fa-user" style="color:#94a3b8;margin-right:6px"></i>Usuario
-                </label>
-                {{ form.username }}
-                {% if form.username.errors %}
+
+            {% for field in form %}
+            <div class="form-group" style="margin-bottom:12px;">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <span class="helptext">{{ field.help_text|safe }}</span>
+                {% endif %}
+                {% if field.errors %}
                 <ul class="errorlist">
-                    {% for e in form.username.errors %}
-                    <li>{{ e }}</li>
+                    {% for error in field.errors %}
+                    <li>{{ error }}</li>
                     {% endfor %}
                 </ul>
                 {% endif %}
             </div>
-            <div class="form-group">
-                <label class="form-label" for="{{ form.password.id_for_label }}">
-                    <i class="fas fa-lock" style="color:#94a3b8;margin-right:6px"></i>Contraseña
-                </label>
-                {{ form.password }}
-                {% if form.password.errors %}
-                <ul class="errorlist">
-                    {% for e in form.password.errors %}
-                    <li>{{ e }}</li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
+            {% endfor %}
+
             {% if form.non_field_errors %}
             <div class="alert alert-error">
                 <i class="fas fa-exclamation-circle"></i>
                 {% for e in form.non_field_errors %}{{ e }}{% endfor %}
             </div>
             {% endif %}
-            <button type="submit" class="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
-            </button>
 
+            <button type="submit" class="btn-login">
+                <i class="fas fa-check"></i> Registrar mi Cuenta
+            </button>
+            <div style="text-align: center; margin-top: 16px;">
+                <a href="{% url 'tareas:verificar_cedula_registro' %}"
+                    style="color: #64748b; text-decoration: none; font-size: 14px;">
+                    Cancelar registro
+                </a>
+            </div>
         </form>
-        <p class="login-footer">Sistema de Control de Actividades de Oficina</p>
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Usuarios — Control de Tareas{% endblock %}
+{% block page_title %}Gestión de Usuarios{% endblock %}
+{% block page_subtitle %}Listado de cuentas registradas en el sistema{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'tareas:lista_personal' %}" class="btn btn-primary">
+    <i class="fas fa-user-plus"></i> Vincular Nuevo Usuario
+</a>
+
+{% endblock %}
+
+{% block content %}
+<!-- Barra de Búsqueda -->
+<form method="get" class="filters-bar">
+    <div class="filter-group" style="flex:2;min-width:200px">
+        <label>Buscar Usuarios</label>
+        <input type="text" name="q" value="{{ q }}" class="form-control"
+            placeholder="Buscar por usuario, nombre o cédula..." style="min-width:200px">
+    </div>
+    <div class="filter-group" style="flex-direction:row;align-items:flex-end;gap:8px">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Buscar</button>
+        <a href="{% url 'tareas:lista_usuarios' %}" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i>
+            Limpiar</a>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-user-shield" style="color:var(--primary);margin-right:8px"></i> Usuarios en el Sistema ({{ page_obj.paginator.count }})</h3>
+    </div>
+    {% if page_obj %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Nombre Completo</th>
+                    <th>Cédula</th>
+                    <th>Departamento</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usu in page_obj %}
+                <tr>
+                    <td style="font-weight: 600;">{{ usu.username }}</td>
+                    <td>{{ usu.get_full_name|default:"-" }}</td>
+                    <td>{{ usu.personal.cedula|default:"No vinculado" }}</td>
+                    <td style="font-size: 13px;">{{ usu.personal.departamento.nombre|default:"-" }}</td>
+                    <td>
+                        {% if usu.personal %}
+                            {% if usu.personal.rol == 'ADMIN' %}
+                                <span class="badge badge-co" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe">Administrador</span>
+                            {% elif usu.personal.rol == 'SUPER' %}
+                                <span class="badge badge-co" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa">Supervisor</span>
+                            {% else %}
+                                <span class="badge badge-ca" style="background:#f8fafc;color:#64748b;border:1px solid #e2e8f0">Usuario Normal</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-ca" style="background:#f1f5f9;color:#94a3b8">Sin Perfil</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if usu.is_active %}
+                        <span class="badge badge-co"><i class="fas fa-check"></i> Activo</span>
+                        {% else %}
+                        <span class="badge badge-ca"><i class="fas fa-times"></i> Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if usu.personal and usu != request.user %}
+                        <form action="{% url 'tareas:cambiar_rol_usuario' usu.id %}" method="post" class="d-flex gap-1 align-items-center">
+                            {% csrf_token %}
+                            <select name="rol" class="form-select form-select-sm" style="width: auto; font-size: 12px; padding: 2px 5px;">
+                                {% for val, label in rol_choices %}
+                                <option value="{{ val }}" {% if usu.personal.rol == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-sm" title="Cambiar Rol" style="padding: 2px 8px;">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </form>
+                        {% elif usu == request.user %}
+                        <small class="text-muted">Eres tú</small>
+                        {% else %}
+                        <small class="text-muted">-</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-user-slash"></i>
+        <h3>No se encontraron usuarios</h3>
+        <p>Prueba con otros criterios de búsqueda.</p>
+    </div>
+    {% endif %}
+    {% include "tareas/paginacion.html" %}
+</div>
+{% endblock %}

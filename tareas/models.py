@@ -106,11 +106,26 @@ class Departamento(models.Model):
 # ============================================================
 
 class Personal(models.Model):
+    class Rol(models.TextChoices):
+        ADMIN = 'ADMIN', 'Administrador'
+        SUPERVISOR = 'SUPER', 'Supervisor'
+        USUARIO = 'USER', 'Usuario Normal'
+
     usuario = models.OneToOneField(
         User,
-        on_delete=models.CASCADE,
-        related_name='personal'
+        on_delete=models.SET_NULL,
+        related_name='personal',
+        null=True,
+        blank=True
     )
+    rol = models.CharField(
+        max_length=10,
+        choices=Rol.choices,
+        default=Rol.USUARIO,
+        verbose_name="Rol de Usuario"
+    )
+    nombres = models.CharField(max_length=100, null=True, blank=True)
+    apellidos = models.CharField(max_length=100, null=True, blank=True)
     departamento = models.ForeignKey(
         Departamento,
         on_delete=models.PROTECT,
@@ -123,31 +138,63 @@ class Personal(models.Model):
         default=False,
         help_text="Indica si este trabajador es el jefe/responsable de su departamento"
     )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
 
     class Meta:
         verbose_name = "Personal"
         verbose_name_plural = "Personal"
-        ordering = ['usuario__last_name', 'usuario__first_name']
+        ordering = ['apellidos', 'nombres']
 
     def __str__(self):
-        return f"{self.usuario.get_full_name()} ({self.departamento.nombre})"
+        return f"{self.get_nombre_completo()} ({self.departamento.nombre})"
 
     def get_nombre_completo(self):
-        return self.usuario.get_full_name() or self.usuario.username
+        if self.nombres and self.apellidos:
+            return f"{self.nombres} {self.apellidos}"
+        if self.usuario:
+            return self.usuario.get_full_name() or self.usuario.username
+        return self.cedula
 
     def get_departamentos_visibles(self):
         """
         Retorna los IDs de los departamentos cuyas tareas este
         usuario puede ver, según su nivel jerárquico.
         """
+        if self.rol == self.Rol.ADMIN:
+            # Administrador ve todo
+            return [d.id for d in Departamento.objects.all()]
+        
         dept = self.departamento
-        if self.es_jefe:
-            # Puede ver su propio departamento y todos los subordinados
+        if self.rol == self.Rol.SUPERVISOR or self.es_jefe:
+            # Supervisor (o jefe antiguo) ve su departamento y subordinados
             departamentos = [dept] + dept.get_todos_los_subordinados()
             return [d.id for d in departamentos]
         else:
             # Solo ve su propio departamento
             return [dept.id]
+
+
+class HistorialMovimientoPersonal(models.Model):
+    class TipoMovimiento(models.TextChoices):
+        DESACTIVACION = 'DE', 'Desactivación'
+        ACTIVACION = 'AC', 'Activación'
+        MODIFICACION = 'MO', 'Modificación'
+        OTRO = 'OT', 'Otro'
+
+    personal = models.ForeignKey(Personal, on_delete=models.CASCADE, related_name='historial_movimientos')
+    tipo_movimiento = models.CharField(max_length=2, choices=TipoMovimiento.choices, default=TipoMovimiento.OTRO)
+    razon = models.TextField(verbose_name="Razón / Motivo")
+    fecha = models.DateTimeField(auto_now_add=True)
+    usuario_responsable = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Historial de Movimiento"
+        verbose_name_plural = "Historial de Movimientos"
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.get_tipo_movimiento_display()} - {self.personal.get_nombre_completo()} ({self.fecha.strftime('%Y-%m-%d')})"
+
 
 
 # ============================================================
@@ -161,6 +208,7 @@ class Tarea(models.Model):
         EN_PROGRESO = 'EP', 'En Progreso'
         COMPLETADA = 'CO', 'Completada'
         CANCELADA = 'CA', 'Cancelada'
+        ELIMINADA = 'EL', 'Eliminada'
 
     class Prioridad(models.TextChoices):
         BAJA = 'BJ', 'Baja'
@@ -201,6 +249,10 @@ class Tarea(models.Model):
         max_length=2,
         choices=Prioridad.choices,
         default=Prioridad.MEDIA
+    )
+    porcentaje_avance = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Porcentaje de avance"
     )
 
     # Fechas

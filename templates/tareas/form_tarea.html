@@ -11,31 +11,32 @@
 
 {% block extra_scripts %}
 <script>
-// Carga dinámica de parroquias según el municipio seleccionado
-document.getElementById('id_municipio').addEventListener('change', function() {
-    const municipioId = this.value;
-    const parroquiaSelect = document.getElementById('id_parroquia');
-    parroquiaSelect.innerHTML = '<option value="">---------</option>';
-    if (municipioId) {
-        fetch(`/ajax/parroquias/?municipio_id=${municipioId}`)
-            .then(r => r.json())
-            .then(data => {
-                data.parroquias.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.nombre;
-                    parroquiaSelect.appendChild(opt);
+    // Carga dinámica de parroquias según el municipio seleccionado
+    document.getElementById('id_municipio').addEventListener('change', function () {
+        const municipioId = this.value;
+        const parroquiaSelect = document.getElementById('id_parroquia');
+        parroquiaSelect.innerHTML = '<option value="">Seleccione una parroquia</option>';
+        if (municipioId) {
+            fetch(`/ajax/parroquias/?municipio_id=${municipioId}`)
+                .then(r => r.json())
+                .then(data => {
+                    data.parroquias.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.textContent = p.nombre;
+                        parroquiaSelect.appendChild(opt);
+                    });
                 });
-            });
-    }
-});
+        }
+    });
 </script>
 {% endblock %}
 
 {% block content %}
 <div class="card" style="max-width:860px;margin:0 auto">
     <div class="card-header">
-        <h3><i class="fas fa-{% if accion == 'Crear' %}plus{% else %}edit{% endif %}" style="color:var(--primary);margin-right:8px"></i>{{ titulo_pagina }}</h3>
+        <h3><i class="fas fa-{% if accion == 'Crear' %}plus{% else %}edit{% endif %}"
+                style="color:var(--primary);margin-right:8px"></i>{{ titulo_pagina }}</h3>
     </div>
     <div class="card-body">
         <form method="post" novalidate>
@@ -49,13 +50,20 @@ document.getElementById('id_municipio').addEventListener('change', function() {
             {% endif %}
 
             <!-- Información general -->
-            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <h4
+                style="font-size:14px;font-weight:600;color:var(--text-muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
                 <i class="fas fa-info-circle" style="margin-right:6px"></i> Información General
             </h4>
             <div class="form-group">
                 <label class="form-label">{{ form.titulo.label }}</label>
                 {{ form.titulo }}
-                {% if form.titulo.errors %}<ul class="errorlist">{% for e in form.titulo.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                {% if form.titulo.errors %}
+                <ul class="errorlist">
+                    {% for e in form.titulo.errors %}
+                    <li>{{ e }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
             </div>
             <div class="form-group">
                 <label class="form-label">{{ form.descripcion.label }}</label>
@@ -70,39 +78,76 @@ document.getElementById('id_municipio').addEventListener('change', function() {
                     <label class="form-label">{{ form.estado.label }}</label>
                     {{ form.estado }}
                 </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.porcentaje_avance.label }} (%)</label>
+                    {{ form.porcentaje_avance }}
+                    {% if form.porcentaje_avance.errors %}
+                    <ul class="errorlist">
+                        {% for e in form.porcentaje_avance.errors %}
+                        <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Asignación -->
-            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <h4
+                style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
                 <i class="fas fa-users" style="margin-right:6px"></i> Asignación
             </h4>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">{{ form.asignada_a.label }}</label>
                     {{ form.asignada_a }}
-                    {% if form.asignada_a.errors %}<ul class="errorlist">{% for e in form.asignada_a.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    {% if form.asignada_a.errors %}
+                    <ul class="errorlist">
+                        {% for e in form.asignada_a.errors %}
+                        <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ form.departamento.label }}</label>
                     {{ form.departamento }}
-                    {% if form.departamento.errors %}<ul class="errorlist">{% for e in form.departamento.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    {% if form.departamento.errors %}
+                    <ul class="errorlist">
+                        {% for e in form.departamento.errors %}
+                        <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
             </div>
 
             <!-- Fechas -->
-            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <h4
+                style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
                 <i class="fas fa-calendar" style="margin-right:6px"></i> Fechas
             </h4>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">{{ form.fecha_inicio_planificada.label }}</label>
                     {{ form.fecha_inicio_planificada }}
-                    {% if form.fecha_inicio_planificada.errors %}<ul class="errorlist">{% for e in form.fecha_inicio_planificada.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    {% if form.fecha_inicio_planificada.errors %}
+                    <ul class="errorlist">
+                        {% for e in form.fecha_inicio_planificada.errors %}
+                        <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ form.fecha_fin_planificada.label }}</label>
                     {{ form.fecha_fin_planificada }}
-                    {% if form.fecha_fin_planificada.errors %}<ul class="errorlist">{% for e in form.fecha_fin_planificada.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    {% if form.fecha_fin_planificada.errors %}
+                    <ul class="errorlist">
+                        {% for e in form.fecha_fin_planificada.errors %}
+                        <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
             </div>
             <div class="form-group" style="max-width:320px">
@@ -112,7 +157,8 @@ document.getElementById('id_municipio').addEventListener('change', function() {
             </div>
 
             <!-- Ubicación geográfica -->
-            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <h4
+                style="font-size:14px;font-weight:600;color:var(--text-muted);margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
                 <i class="fas fa-map-marker-alt" style="margin-right:6px"></i> Ubicación Geográfica (Opcional)
             </h4>
             <div class="form-row">

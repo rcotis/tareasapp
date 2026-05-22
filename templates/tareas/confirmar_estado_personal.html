@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ accion_str }} Personal — Control de Tareas{% endblock %}
+{% block page_title %}{{ accion_str }} Trabajador{% endblock %}
+{% block page_subtitle %}
+¿Estás seguro de que deseas {% if nuevo_estado %}reactivar{% else %}desactivar{% endif %} a <strong>{{
+    personal.get_nombre_completo }}</strong>?
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div class="card-header">
+        <h3><i class="fas {% if nuevo_estado %}fa-user-check{% else %}fa-user-slash{% endif %}"
+                style="color:{% if nuevo_estado %}var(--success){% else %}var(--danger){% endif %};margin-right:8px"></i>
+            Confirmar Acción</h3>
+    </div>
+    <div class="card-body">
+        <p style="margin-bottom: 20px;">
+            Estás a punto de cambiar el estado de este trabajador. Por favor, provee un motivo para dejar registro en el
+            <strong>historial de movimientos</strong>.
+        </p>
+
+        <div class="detail-item">
+            <div class="detail-label">Trabajador</div>
+            <div class="detail-value">{{ personal.get_nombre_completo }} ({{ personal.cedula }})</div>
+        </div>
+
+        <form method="post" style="margin-top: 24px;">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="{{ form.razon.id_for_label }}" class="form-label">{{ form.razon.label }} <span
+                        style="color:red">*</span></label>
+                {{ form.razon }}
+                {% if form.razon.errors %}
+                <ul class="errorlist">{{ form.razon.errors }}</ul>
+                {% endif %}
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:24px">
+                <button type="submit" class="btn {% if nuevo_estado %}btn-primary{% else %}btn-danger{% endif %}">
+                    <i class="fas fa-save"></i> Confirmar {{ accion_str }}
+                </button>
+                <a href="{% url 'tareas:lista_personal' %}" class="btn btn-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

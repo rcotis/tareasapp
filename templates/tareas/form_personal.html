@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_pagina }} — Control de Personal{% endblock %}
+{% block page_title %}{{ titulo_pagina }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'tareas:dashboard' %}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Volver al Dashboard
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:600px;margin:0 auto">
+    <div class="card-header">
+        <h3><i class="fas fa-{% if accion == 'Registrar' %}plus{% else %}edit{% endif %}" style="color:var(--primary);margin-right:8px"></i>{{ titulo_pagina }}</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="alert alert-error">
+                <p><i class="fas fa-exclamation-triangle"></i> Por favor corrija los siguientes errores:</p>
+                <ul style="margin-top:8px;padding-left:20px">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <h4 style="font-size:14px;font-weight:600;color:var(--text-muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                <i class="fas fa-user" style="margin-right:6px"></i> Información del Personal
+            </h4>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ form.nombres.label }}</label>
+                    {{ form.nombres }}
+                    {% if form.nombres.errors %}<ul class="errorlist">{% for e in form.nombres.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.apellidos.label }}</label>
+                    {{ form.apellidos }}
+                    {% if form.apellidos.errors %}<ul class="errorlist">{% for e in form.apellidos.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ form.cedula.label }}</label>
+                    {{ form.cedula }}
+                    {% if form.cedula.errors %}<ul class="errorlist">{% for e in form.cedula.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ form.telefono.label }}</label>
+                    {{ form.telefono }}
+                    {% if form.telefono.errors %}<ul class="errorlist">{% for e in form.telefono.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">{{ form.departamento.label }}</label>
+                {{ form.departamento }}
+                {% if form.departamento.errors %}<ul class="errorlist">{% for e in form.departamento.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">{{ form.cargo.label }}</label>
+                {{ form.cargo }}
+                {% if form.cargo.errors %}<ul class="errorlist">{% for e in form.cargo.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">{{ form.rol.label }}</label>
+                {{ form.rol }}
+                {% if form.rol.errors %}<ul class="errorlist">{% for e in form.rol.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="display:flex;align-items:center;gap:8px">
+                    {{ form.es_jefe }}
+                    <label class="form-label" style="margin-bottom:0">{{ form.es_jefe.label }}</label>
+                    <p class="form-text" style="margin-left:8px">{{ form.es_jefe.help_text }}</p>
+                    {% if form.es_jefe.errors %}<ul class="errorlist">{% for e in form.es_jefe.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div class="form-group" style="display:flex;align-items:center;gap:8px">
+                    {{ form.activo }}
+                    <label class="form-label" style="margin-bottom:0">{{ form.activo.label }}</label>
+                    {% if form.activo.errors %}<ul class="errorlist">{% for e in form.activo.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:24px">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ accion }}
+                </button>
+                <a href="{% url 'tareas:dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

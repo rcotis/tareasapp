@@ -40,6 +40,12 @@
             {% endfor %}
         </select>
     </div>
+    <div class="filter-group" style="justify-content:center;padding-bottom:10px">
+        <label class="form-check-label" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" name="solo_mias" class="form-check-input" {% if filtros.solo_mias %}checked{% endif %}>
+            Mis Tareas
+        </label>
+    </div>
     <div class="filter-group" style="flex-direction:row;align-items:flex-end;gap:8px">
         <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Filtrar</button>
         <a href="{% url 'tareas:lista_tareas' %}" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Limpiar</a>
@@ -50,13 +56,13 @@
 <div class="card">
     <div class="card-header">
         <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px"></i>
-            {{ tareas|length }} tarea{{ tareas|length|pluralize }} encontrada{{ tareas|length|pluralize }}
+            {{ page_obj.paginator.count }} tarea{{ page_obj.paginator.count|pluralize }} encontrada{{ page_obj.paginator.count|pluralize }}
         </h3>
         <a href="{% url 'tareas:crear_tarea' %}" class="btn btn-primary btn-sm">
             <i class="fas fa-plus"></i> Nueva Tarea
         </a>
     </div>
-    {% if tareas %}
+    {% if page_obj %}
     <div class="table-wrapper">
         <table>
             <thead>
@@ -66,6 +72,7 @@
                     <th>Departamento</th>
                     <th>Estado</th>
                     <th>Prioridad</th>
+                    <th>Avance</th>
                     <th>Inicio</th>
                     <th>Culminación Plan.</th>
                     <th>Fin Real</th>
@@ -74,7 +81,7 @@
                 </tr>
             </thead>
             <tbody>
-            {% for t in tareas %}
+            {% for t in page_obj %}
             <tr {% if t.esta_vencida %}style="background:#fff5f5"{% endif %}>
                 <td>
                     <a href="{% url 'tareas:detalle_tarea' t.pk %}"
@@ -99,6 +106,12 @@
                 <td style="font-size:13px">{{ t.departamento.nombre }}</td>
                 <td><span class="badge badge-{{ t.estado|lower }}">{{ t.get_estado_display }}</span></td>
                 <td><span class="badge badge-{{ t.prioridad|lower }}">{{ t.get_prioridad_display }}</span></td>
+                <td>
+                    <div style="width: 100px; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px;">
+                        <div style="width: {{ t.porcentaje_avance }}%; background: {% if t.porcentaje_avance == 100 %}#10b981{% else %}var(--primary){% endif %}; height: 100%;"></div>
+                    </div>
+                    <div style="font-size: 10px; font-weight: 600; text-align: center; margin-top: 2px;">{{ t.porcentaje_avance }}%</div>
+                </td>
                 <td style="font-size:13px">{{ t.fecha_inicio_planificada|date:"d/m/Y" }}</td>
                 <td style="font-size:13px;{% if t.esta_vencida %}color:var(--danger);font-weight:600{% endif %}">
                     {{ t.fecha_fin_planificada|date:"d/m/Y" }}
@@ -114,10 +127,6 @@
                         <a href="{% url 'tareas:editar_tarea' t.pk %}" class="btn btn-outline btn-icon btn-sm" title="Editar">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <a href="{% url 'tareas:eliminar_tarea' t.pk %}" class="btn btn-icon btn-sm"
-                           style="background:var(--danger-light);color:var(--danger)" title="Eliminar">
-                            <i class="fas fa-trash"></i>
-                        </a>
                     </div>
                 </td>
             </tr>
@@ -132,5 +141,6 @@
         <p>Prueba con otros filtros o <a href="{% url 'tareas:crear_tarea' %}">crea una nueva tarea</a>.</p>
     </div>
     {% endif %}
+    {% include "tareas/paginacion.html" %}
 </div>
 {% endblock %}

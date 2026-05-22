@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-7s8*yyuj6j7n+orz&(1#uf&_s4och#@_ppx!jc8a2eu&uv_a(o
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -130,3 +130,9 @@ STATIC_URL = 'static/'
 # Redirigir al login si no autenticado
 LOGIN_URL = '/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

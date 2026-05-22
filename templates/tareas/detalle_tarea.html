@@ -11,10 +11,6 @@
 <a href="{% url 'tareas:editar_tarea' tarea.pk %}" class="btn btn-primary btn-sm">
     <i class="fas fa-edit"></i> Editar
 </a>
-<a href="{% url 'tareas:eliminar_tarea' tarea.pk %}" class="btn btn-sm"
-   style="background:var(--danger-light);color:var(--danger)">
-    <i class="fas fa-trash"></i>
-</a>
 {% endblock %}
 
 {% block content %}
@@ -43,6 +39,15 @@
                 <span class="badge badge-{{ tarea.prioridad|lower }}" style="font-size:13px;padding:6px 14px">
                     {{ tarea.get_prioridad_display }}
                 </span>
+                <div style="margin-left: 16px; min-width: 140px;">
+                    <div style="font-weight: 600; font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                        <span>Avance</span>
+                        <span>{{ tarea.porcentaje_avance }}%</span>
+                    </div>
+                    <div style="width: 100%; background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden;">
+                        <div style="width: {{ tarea.porcentaje_avance }}%; background: {% if tarea.porcentaje_avance == 100 %}#10b981{% else %}var(--primary){% endif %}; height: 100%;"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

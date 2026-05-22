@@ -47,8 +47,8 @@ class DepartamentoAdmin(admin.ModelAdmin):
 
 @admin.register(Personal)
 class PersonalAdmin(admin.ModelAdmin):
-    list_display = ('get_nombre', 'cedula', 'cargo', 'departamento', 'es_jefe', 'get_usuario')
-    list_filter = ('departamento', 'es_jefe')
+    list_display = ('get_nombre', 'cedula', 'cargo', 'departamento', 'rol', 'es_jefe', 'get_usuario')
+    list_filter = ('departamento', 'rol', 'es_jefe')
     search_fields = ('usuario__first_name', 'usuario__last_name', 'cedula', 'cargo')
     raw_id_fields = ('usuario',)
 
@@ -57,7 +57,7 @@ class PersonalAdmin(admin.ModelAdmin):
     get_nombre.short_description = 'Nombre Completo'
 
     def get_usuario(self, obj):
-        return obj.usuario.username
+        return obj.usuario.username if obj.usuario else "Sin vinculación"
     get_usuario.short_description = 'Usuario'
 
 
@@ -115,15 +115,18 @@ class TareaAdmin(admin.ModelAdmin):
         """
         Filtra las tareas según el nivel jerárquico del usuario logueado.
         - Superusuarios y staff: ven todo.
-        - Jefes: ven las tareas de su departamento y sus subordinados.
+        - Administradores (vía Perfil): ven todo.
+        - Jefes/Supervisores: ven las tareas de su departamento y sus subordinados.
         - Personal regular: solo sus tareas asignadas.
         """
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or request.user.is_staff:
             return qs
         try:
             personal = request.user.personal
-            if personal.es_jefe:
+            if personal.rol == Personal.Rol.ADMIN:
+                return qs
+            if personal.rol == Personal.Rol.SUPERVISOR or personal.es_jefe:
                 dept_ids = personal.get_departamentos_visibles()
                 return qs.filter(departamento__id__in=dept_ids)
             else:
