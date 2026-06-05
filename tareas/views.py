@@ -6,9 +6,31 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
-from .models import Tarea, Personal, Municipio, Parroquia, Departamento, HistorialMovimientoPersonal
+from .models import Tarea, Personal, Municipio, Parroquia, Departamento, HistorialMovimientoPersonal, Bitacora
 from .forms import TareaForm, LoginForm, PersonalForm, CambioEstadoPersonalForm, VerificarCedulaForm, VincularUsuarioForm
 from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
+
+
+# ============================================================
+# UTILS / LOGGING
+# ============================================================
+
+def registrar_log(request, actividad, modulo):
+    """
+    Función auxiliar para registrar una actividad en la bitácora.
+    """
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+
+    Bitacora.objects.create(
+        usuario=request.user,
+        actividad=actividad,
+        modulo=modulo,
+        ip=ip
+    )
 
 
 # ============================================================
@@ -102,7 +124,9 @@ def get_tareas_visibles(user):
 @login_required
 def dashboard(request):
     tareas = get_tareas_visibles(request.user)
-    hoy = timezone.now().date()
+    # Use timezone-aware datetime for DB comparisons
+    now = timezone.now()
+    hoy = now.date()
 
     stats = {
         'total': tareas.count(),
@@ -111,14 +135,16 @@ def dashboard(request):
         'completadas': tareas.filter(estado='CO').count(),
         'vencidas': tareas.filter(
             estado__in=['PE', 'EP'],
-            fecha_fin_planificada__lt=hoy
+            fecha_fin_planificada__lt=now
         ).count(),
     }
+
+
 
     tareas_recientes = tareas.order_by('-fecha_creacion')[:5]
     tareas_vencidas = tareas.filter(
         estado__in=['PE', 'EP'],
-        fecha_fin_planificada__lt=hoy
+        fecha_fin_planificada__lt=now
     ).order_by('fecha_fin_planificada')[:5]
 
     try:
@@ -140,12 +166,11 @@ def dashboard(request):
 # LISTADO DE TAREAS
 # ============================================================
 
-@login_required
-def lista_tareas(request):
-    tareas = get_tareas_visibles(request.user)
-    hoy = timezone.now().date()
-
-    # Filtros desde GET
+def filtrar_tareas_request(request, tareas):
+    """
+    Filtra un queryset de tareas según los parámetros GET de la solicitud.
+    Retorna el queryset filtrado y un diccionario con los valores de los filtros.
+    """
     estado = request.GET.get('estado', '')
     prioridad = request.GET.get('prioridad', '')
     municipio_id = request.GET.get('municipio', '')
@@ -158,7 +183,11 @@ def lista_tareas(request):
         except Personal.DoesNotExist:
             pass
     
-    if estado:
+    if estado == '':
+        tareas = tareas.exclude(estado=Tarea.Estado.COMPLETADA)
+    elif estado == 'todas':
+        pass
+    else:
         tareas = tareas.filter(estado=estado)
     if prioridad:
         tareas = tareas.filter(prioridad=prioridad)
@@ -168,9 +197,29 @@ def lista_tareas(request):
         tareas = tareas.filter(
             Q(titulo__icontains=busqueda) |
             Q(descripcion__icontains=busqueda) |
-            Q(asignada_a__usuario__first_name__icontains=busqueda) |
-            Q(asignada_a__usuario__last_name__icontains=busqueda)
+            Q(asignada_a__nombres__icontains=busqueda) |
+            Q(asignada_a__apellidos__icontains=busqueda) |
+            Q(creada_por__nombres__icontains=busqueda) |
+            Q(creada_por__apellidos__icontains=busqueda) |
+            Q(asignada_a__usuario__username__icontains=busqueda) |
+            Q(creada_por__usuario__username__icontains=busqueda)
         )
+    
+    return tareas, {
+        'estado': estado,
+        'prioridad': prioridad,
+        'municipio': municipio_id,
+        'q': busqueda,
+        'solo_mias': solo_mias,
+    }
+
+
+@login_required
+def lista_tareas(request):
+    tareas_visibles = get_tareas_visibles(request.user)
+    tareas, filtros = filtrar_tareas_request(request, tareas_visibles)
+    now = timezone.now()
+    hoy = now.date()
 
     # Paginación
     paginator = Paginator(tareas.order_by('-fecha_creacion'), 10) # 10 por página
@@ -179,19 +228,228 @@ def lista_tareas(request):
 
     context = {
         'page_obj': page_obj,
-        'municipios': Municipio.objects.all(),
         'estado_choices': Tarea.Estado.choices,
         'prioridad_choices': Tarea.Prioridad.choices,
-        'filtros': {
-            'estado': estado,
-            'prioridad': prioridad,
-            'municipio': municipio_id,
-            'q': busqueda,
-            'solo_mias': solo_mias,
-        },
+        'filtros': filtros,
         'hoy': hoy,
+        'now': now,
     }
+    registrar_log(request, "Visualizó el listado de tareas", "Tareas")
     return render(request, 'tareas/lista_tareas.html', context)
+
+
+@login_required
+def reporte_tareas_pdf(request):
+    from django.http import HttpResponse
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.pdfgen import canvas
+    from django.utils import timezone
+
+    tareas_visibles = get_tareas_visibles(request.user)
+    tareas, filtros = filtrar_tareas_request(request, tareas_visibles)
+
+    # Ordenar por fecha_creacion descendente como en la vista
+    tareas = tareas.order_by('-fecha_creacion')
+
+    # Configurar respuesta HTTP
+    response = HttpResponse(content_type='application/pdf')
+    hoy_str = timezone.now().strftime('%Y%m%d_%H%M%S')
+    response['Content-Disposition'] = f'attachment; filename="reporte_tareas_{hoy_str}.pdf"'
+
+    # Documento en Landscape con margenes de 0.5 pulg (36pt)
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=landscape(letter),
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=54
+    )
+
+    story = []
+    styles = getSampleStyleSheet()
+
+    # Estilos de ReportLab
+    style_title = ParagraphStyle(
+        name='Title_Custom',
+        parent=styles['Heading1'],
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor('#1e40af'),
+        fontName='Helvetica-Bold',
+        spaceAfter=4
+    )
+    style_subtitle = ParagraphStyle(
+        name='Subtitle_Custom',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#475569'),
+        spaceAfter=15
+    )
+    style_normal = ParagraphStyle(
+        name='Normal_Custom',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#0f172a')
+    )
+    style_header = ParagraphStyle(
+        name='Header_Custom',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=10,
+        textColor=colors.white,
+        fontName='Helvetica-Bold'
+    )
+
+    # Agregar Título del Reporte
+    story.append(Paragraph("Reporte de Tareas Asignadas", style_title))
+
+    # Construir resumen de filtros aplicados
+    filtros_aplicados = []
+    if filtros.get('q'):
+        filtros_aplicados.append(f"Búsqueda: '{filtros['q']}'")
+    if filtros.get('estado'):
+        if filtros['estado'] == 'todas':
+            filtros_aplicados.append("Estado: Todas")
+        else:
+            estado_lbl = dict(Tarea.Estado.choices).get(filtros['estado'], filtros['estado'])
+            filtros_aplicados.append(f"Estado: {estado_lbl}")
+    else:
+        filtros_aplicados.append("Estado: Activas")
+
+    if filtros.get('prioridad'):
+        prioridad_lbl = dict(Tarea.Prioridad.choices).get(filtros['prioridad'], filtros['prioridad'])
+        filtros_aplicados.append(f"Prioridad: {prioridad_lbl}")
+    if filtros.get('solo_mias'):
+        filtros_aplicados.append("Solo mis tareas")
+
+    filtro_summary = " | ".join(filtros_aplicados) if filtros_aplicados else "Ninguno"
+    fecha_generacion = timezone.now().strftime('%d/%m/%Y %I:%M %p')
+    
+    meta_info = f"<b>Filtros aplicados:</b> {filtro_summary} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Generado por:</b> {request.user.get_full_name() or request.user.username} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Fecha:</b> {fecha_generacion} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Total tareas:</b> {tareas.count()}"
+    story.append(Paragraph(meta_info, style_subtitle))
+
+    # Crear la tabla de datos
+    headers = [
+        Paragraph("Tarea", style_header),
+        Paragraph("Asignada a", style_header),
+        Paragraph("Departamento", style_header),
+        Paragraph("Estado", style_header),
+        Paragraph("Prioridad", style_header),
+        Paragraph("Avance", style_header),
+        Paragraph("Inicio", style_header),
+        Paragraph("Culminación", style_header),
+        Paragraph("Municipio", style_header),
+    ]
+
+    data = [headers]
+
+    for t in tareas:
+        estado_display = t.get_estado_display()
+        if t.estado == 'PE':
+            estado_html = f'<font color="#854d0e"><b>{estado_display}</b></font>'
+        elif t.estado == 'EP':
+            estado_html = f'<font color="#1e40af"><b>{estado_display}</b></font>'
+        elif t.estado == 'CO':
+            estado_html = f'<font color="#166534"><b>{estado_display}</b></font>'
+        elif t.estado == 'CA':
+            estado_html = f'<font color="#475569"><b>{estado_display}</b></font>'
+        else:
+            estado_html = f'<b>{estado_display}</b>'
+
+        prioridad_display = t.get_prioridad_display()
+        if t.prioridad == 'BJ':
+            prioridad_html = f'<font color="#475569">{prioridad_display}</font>'
+        elif t.prioridad == 'ME':
+            prioridad_html = f'<font color="#92400e">{prioridad_display}</font>'
+        elif t.prioridad == 'AL':
+            prioridad_html = f'<font color="#9a3412"><b>{prioridad_display}</b></font>'
+        elif t.prioridad == 'UR':
+            prioridad_html = f'<font color="#991b1b"><b>{prioridad_display}</b></font>'
+        else:
+            prioridad_html = prioridad_display
+
+        fecha_ini = t.fecha_inicio_planificada.strftime('%d/%m/%Y') if t.fecha_inicio_planificada else "—"
+        fecha_fin = t.fecha_fin_planificada.strftime('%d/%m/%Y') if t.fecha_fin_planificada else "—"
+
+        row = [
+            Paragraph(t.titulo, style_normal),
+            Paragraph(t.asignada_a.get_nombre_completo() if t.asignada_a else "—", style_normal),
+            Paragraph(t.departamento.nombre if t.departamento else "—", style_normal),
+            Paragraph(estado_html, style_normal),
+            Paragraph(prioridad_html, style_normal),
+            Paragraph(f"{t.porcentaje_avance}%", style_normal),
+            Paragraph(fecha_ini, style_normal),
+            Paragraph(fecha_fin, style_normal),
+            Paragraph(t.municipio.nombre if t.municipio else "—", style_normal),
+        ]
+        data.append(row)
+
+    col_widths = [180, 100, 80, 65, 60, 50, 60, 60, 65]
+    t_table = Table(data, colWidths=col_widths, repeatRows=1)
+    
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+    ])
+
+    for i in range(1, len(data)):
+        if i % 2 == 0:
+            table_style.add('BACKGROUND', (0, i), (-1, i), colors.HexColor('#f8fafc'))
+
+    t_table.setStyle(table_style)
+    story.append(t_table)
+
+    class NumberedCanvas(canvas.Canvas):
+        def __init__(self, *args, **kwargs):
+            canvas.Canvas.__init__(self, *args, **kwargs)
+            self._saved_page_states = []
+
+        def showPage(self):
+            self._saved_page_states.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            num_pages = len(self._saved_page_states)
+            for state in self._saved_page_states:
+                self.__dict__.update(state)
+                self.draw_page_number(num_pages)
+                canvas.Canvas.showPage(self)
+            canvas.Canvas.save(self)
+
+        def draw_page_number(self, page_count):
+            self.saveState()
+            self.setFont("Helvetica", 8)
+            self.setFillColor(colors.HexColor('#64748b'))
+            
+            page_text = f"Página {self._pageNumber} de {page_count}"
+            self.drawRightString(792 - 36, 20, page_text)
+            self.drawString(36, 20, "Sistema de Control de Tareas — Reporte generado automáticamente")
+            
+            self.setStrokeColor(colors.HexColor('#cbd5e1'))
+            self.setLineWidth(0.5)
+            self.line(36, 32, 792 - 36, 32)
+            
+            self.restoreState()
+
+    doc.build(story, canvasmaker=NumberedCanvas)
+    
+    registrar_log(request, f"Generó reporte PDF de tareas visibles ({tareas.count()} tareas)", "Tareas")
+
+    return response
 
 
 # ============================================================
@@ -201,6 +459,7 @@ def lista_tareas(request):
 @login_required
 def detalle_tarea(request, pk):
     tarea = get_object_or_404(get_tareas_visibles(request.user), pk=pk)
+    registrar_log(request, f"Visualizó el detalle de la tarea: {tarea.titulo}", "Tareas")
     return render(request, 'tareas/detalle_tarea.html', {
         'tarea': tarea,
         'hoy': timezone.now().date()
@@ -225,6 +484,7 @@ def crear_tarea(request):
             tarea = form.save(commit=False)
             tarea.creada_por = personal
             tarea.save()
+            registrar_log(request, f"Creó la tarea: {tarea.titulo}", "Tareas")
             messages.success(request, f'Tarea "{tarea.titulo}" creada exitosamente.')
             return redirect('tareas:detalle_tarea', pk=tarea.pk)
     else:
@@ -244,11 +504,28 @@ def crear_tarea(request):
 @login_required
 def editar_tarea(request, pk):
     tarea = get_object_or_404(get_tareas_visibles(request.user), pk=pk)
+    
+    # Valores anteriores para la bitácora
+    estado_anterior = tarea.get_estado_display()
+    progreso_anterior = tarea.porcentaje_avance
 
     if request.method == 'POST':
         form = TareaForm(request.POST, instance=tarea, usuario=request.user)
         if form.is_valid():
-            form.save()
+            tarea = form.save()
+            
+            # Determinar qué cambió para el log
+            detalles_cambio = []
+            if progreso_anterior != tarea.porcentaje_avance:
+                detalles_cambio.append(f"progreso: {progreso_anterior}% -> {tarea.porcentaje_avance}%")
+            if estado_anterior != tarea.get_estado_display():
+                detalles_cambio.append(f"estado: {estado_anterior} -> {tarea.get_estado_display()}")
+            
+            msg_log = f"Editó la tarea: {tarea.titulo}"
+            if detalles_cambio:
+                msg_log += f" ({', '.join(detalles_cambio)})"
+            
+            registrar_log(request, msg_log, "Tareas")
             messages.success(request, f'Tarea "{tarea.titulo}" actualizada correctamente.')
             return redirect('tareas:detalle_tarea', pk=tarea.pk)
     else:
@@ -273,6 +550,7 @@ def eliminar_tarea(request, pk):
         titulo = tarea.titulo
         tarea.estado = Tarea.Estado.ELIMINADA
         tarea.save()
+        registrar_log(request, f"Eliminó la tarea: {titulo}", "Tareas")
         messages.success(request, f'La tarea "{titulo}" fue eliminada.')
         return redirect('tareas:lista_tareas')
     return render(request, 'tareas/confirmar_eliminar.html', {'tarea': tarea})
@@ -621,4 +899,57 @@ def vincular_usuario_personal(request, pk):
     return render(request, 'tareas/vincular_usuario.html', {
         'form': form,
         'persona': persona
+    })
+
+
+# ============================================================
+# BITÁCORA (SOLO COORDINADORES)
+# ============================================================
+
+@login_required
+def lista_bitacora(request):
+    # Verificación de permisos
+    es_admin = False
+    es_coordinador = False
+    
+    try:
+        personal = request.user.personal
+        es_admin = personal.rol == Personal.Rol.ADMIN
+        es_coordinador = personal.es_coordinador
+    except Personal.DoesNotExist:
+        pass
+        
+    if not request.user.is_staff and not es_admin and not es_coordinador:
+        messages.error(request, 'No tienes permisos para acceder a la bitácora.')
+        return redirect('tareas:dashboard')
+
+    logs = Bitacora.objects.select_related('usuario').all().order_by('-fecha_hora')
+    
+    # Filtros
+    q = request.GET.get('q', '')
+    modulo = request.GET.get('modulo', '')
+    
+    if q:
+        logs = logs.filter(
+            Q(usuario__username__icontains=q) |
+            Q(usuario__first_name__icontains=q) |
+            Q(usuario__last_name__icontains=q) |
+            Q(actividad__icontains=q)
+        )
+    if modulo:
+        logs = logs.filter(modulo=modulo)
+
+    # Paginación
+    paginator = Paginator(logs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Obtener módulos únicos para el filtro
+    modulos = Bitacora.objects.values_list('modulo', flat=True).distinct()
+
+    return render(request, 'tareas/lista_bitacora.html', {
+        'page_obj': page_obj,
+        'q': q,
+        'modulo_actual': modulo,
+        'modulos': modulos
     })

@@ -173,6 +173,13 @@ class Personal(models.Model):
             # Solo ve su propio departamento
             return [dept.id]
 
+    @property
+    def es_coordinador(self):
+        """
+        Retorna True si el usuario pertenece a una Coordinación (Nivel 1).
+        """
+        return self.departamento.nivel == Departamento.Nivel.COORDINACION
+
 
 class HistorialMovimientoPersonal(models.Model):
     class TipoMovimiento(models.TextChoices):
@@ -257,13 +264,13 @@ class Tarea(models.Model):
 
     # Fechas
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
-    fecha_inicio_planificada = models.DateField(verbose_name="Fecha de inicio planificada")
-    fecha_fin_planificada = models.DateField(verbose_name="Fecha de culminación planificada")
-    fecha_fin_real = models.DateField(
+    fecha_inicio_planificada = models.DateTimeField(verbose_name="Fecha de inicio planificada")
+    fecha_fin_planificada = models.DateTimeField(verbose_name="Fecha de culminación planificada")
+    fecha_fin_real = models.DateTimeField(
         null=True,
         blank=True,
         verbose_name="Fecha de finalización real",
-        help_text="Completar si la tarea finalizó en una fecha distinta a la planificada"
+        help_text="Completar cuando la tarea finalice. Por defecto toma la fecha y hora actual."
     )
 
     # Ubicación geográfica (opcionales)
@@ -306,11 +313,37 @@ class Tarea(models.Model):
     def esta_vencida(self):
         """Retorna True si la tarea no está completada y superó su fecha de culminación planificada."""
         from django.utils import timezone
-        hoy = timezone.now().date()
-        return self.estado not in [self.Estado.COMPLETADA, self.Estado.CANCELADA] and hoy > self.fecha_fin_planificada
+        ahora = timezone.now()
+        return self.estado not in [self.Estado.COMPLETADA, self.Estado.CANCELADA] and ahora > self.fecha_fin_planificada
 
     def tiene_retraso(self):
         """Retorna True si la fecha de finalización real es posterior a la planificada."""
         if self.fecha_fin_real and self.fecha_fin_real > self.fecha_fin_planificada:
             return True
         return False
+
+
+# ============================================================
+# BITÁCORA / AUDITORÍA
+# ============================================================
+
+class Bitacora(models.Model):
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='logs'
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, verbose_name="Fecha y Hora")
+    actividad = models.TextField(verbose_name="Actividad")
+    modulo = models.CharField(max_length=100, verbose_name="Módulo")
+    ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="Dirección IP")
+
+    class Meta:
+        verbose_name = "Entrada de Bitácora"
+        verbose_name_plural = "Entradas de Bitácora"
+        ordering = ['-fecha_hora']
+
+    def __str__(self):
+        return f"{self.usuario.username if self.usuario else 'Anónimo'} - {self.actividad} ({self.fecha_hora})"

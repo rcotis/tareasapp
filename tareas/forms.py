@@ -38,9 +38,18 @@ class TareaForm(forms.ModelForm):
             'porcentaje_avance': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 100}),
             'asignada_a': forms.Select(attrs={'class': 'form-select'}),
             'departamento': forms.Select(attrs={'class': 'form-select'}),
-            'fecha_inicio_planificada': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_fin_planificada': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_fin_real': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_inicio_planificada': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'class': 'form-control', 'type': 'datetime-local'}
+            ),
+            'fecha_fin_planificada': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'class': 'form-control', 'type': 'datetime-local'}
+            ),
+            'fecha_fin_real': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'class': 'form-control', 'type': 'datetime-local'}
+            ),
             'municipio': forms.Select(attrs={'class': 'form-select', 'id': 'id_municipio'}),
             'parroquia': forms.Select(attrs={'class': 'form-select', 'id': 'id_parroquia'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Observaciones adicionales...'}),
@@ -49,6 +58,9 @@ class TareaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.usuario = kwargs.pop('usuario', None)
         super().__init__(*args, **kwargs)
+
+        # Importar timezone para el valor inicial de fecha_fin_real
+        from django.utils import timezone
 
         # Determinar si el usuario es supervisor o admin
         self.es_supervisor_o_admin = False
@@ -68,14 +80,34 @@ class TareaForm(forms.ModelForm):
             if self.usuario.is_superuser or self.usuario.groups.filter(name__in=['coordinadores 3', 'coordinadores 4']).exists():
                 es_coordinador_3_o_4 = True
 
+        # Formatear ahora en el formato que espera datetime-local
+        ahora_str = timezone.now().strftime('%Y-%m-%dT%H:%M')
+
         # Mostrar la fecha real como deshabilitada si es una nueva tarea, en lugar de ocultarla
         if not self.instance.pk:
             if 'fecha_fin_real' in self.fields:
                 self.fields['fecha_fin_real'].widget.attrs['readonly'] = True
                 self.fields['fecha_fin_real'].disabled = True
+                # Precargar el campo con la fecha/hora actual aunque esté deshabilitado
+                self.fields['fecha_fin_real'].widget.attrs['value'] = ahora_str
             
             # Municipio por defecto: MIRANDA (ID 10)
             self.fields['municipio'].initial = 10
+
+            # Restricción para usuarios normales: solo pueden asignarse tareas a sí mismos en su departamento
+            if not self.es_supervisor_o_admin and self.usuario:
+                try:
+                    personal = self.usuario.personal
+                    if 'asignada_a' in self.fields:
+                        self.fields['asignada_a'].initial = personal
+                        self.fields['asignada_a'].disabled = True
+                        self.fields['asignada_a'].widget.attrs['readonly'] = True
+                    if 'departamento' in self.fields:
+                        self.fields['departamento'].initial = personal.departamento
+                        self.fields['departamento'].disabled = True
+                        self.fields['departamento'].widget.attrs['readonly'] = True
+                except Personal.DoesNotExist:
+                    pass
         else:
             # Es edición. Las tres fechas siempre se muestran en pantalla, pero se restringe su modificación.
             

@@ -87,12 +87,12 @@
         <div class="card-body">
             <div class="detail-item">
                 <div class="detail-label">Fecha de Inicio Planificada</div>
-                <div class="detail-value">{{ tarea.fecha_inicio_planificada|date:"d/m/Y" }}</div>
+                <div class="detail-value">{{ tarea.fecha_inicio_planificada|date:"d/m/Y H:i" }}</div>
             </div>
             <div class="detail-item">
                 <div class="detail-label">Fecha de Culminación Planificada</div>
                 <div class="detail-value {% if tarea.esta_vencida %}" style="color:var(--danger){% endif %}">
-                    {{ tarea.fecha_fin_planificada|date:"d/m/Y" }}
+                    {{ tarea.fecha_fin_planificada|date:"d/m/Y H:i" }}
                     {% if tarea.esta_vencida %}
                     <i class="fas fa-exclamation-triangle" style="color:var(--danger);margin-left:4px"></i>
                     {% endif %}
@@ -102,7 +102,7 @@
                 <div class="detail-label">Fecha de Finalización Real</div>
                 <div class="detail-value">
                     {% if tarea.fecha_fin_real %}
-                        {{ tarea.fecha_fin_real|date:"d/m/Y" }}
+                        {{ tarea.fecha_fin_real|date:"d/m/Y H:i" }}
                         {% if tarea.tiene_retraso %}
                         <span class="badge" style="background:#fff7ed;color:#9a3412;margin-left:6px">
                             <i class="fas fa-clock"></i> Con retraso

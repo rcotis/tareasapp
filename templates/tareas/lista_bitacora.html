@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Bitácora de Actividades - Sistema de Control de Tareas{% endblock %}
+
+{% block page_title %}Bitácora de Actividades{% endblock %}
+{% block page_subtitle %}Registro detallado de ingresos y acciones en el sistema{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'tareas:dashboard' %}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i> Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card mb-4" style="margin-bottom: 24px;">
+    <div class="card-body">
+        <form method="GET" class="filters-bar" style="margin-bottom: 0; padding: 0; border: none;">
+            <div class="filter-group">
+                <label for="q">Buscar (Usuario/Actividad)</label>
+                <input type="text" name="q" id="q" class="form-control" placeholder="Nombre, usuario..." value="{{ q }}">
+            </div>
+            <div class="filter-group">
+                <label for="modulo">Módulo</label>
+                <select name="modulo" id="modulo" class="form-select">
+                    <option value="">Todos los módulos</option>
+                    {% for m in modulos %}
+                    <option value="{{ m }}" {% if modulo_actual == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+                <a href="{% url 'tareas:lista_bitacora' %}" class="btn btn-secondary" title="Limpiar filtros">
+                    <i class="fas fa-sync-alt"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de Logs -->
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Usuario</th>
+                    <th>Módulo</th>
+                    <th>Actividad</th>
+                    <th>Dirección IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td style="white-space: nowrap;">
+                        <strong>{{ log.fecha_hora|date:"d/m/Y" }}</strong><br>
+                        <small class="text-muted">{{ log.fecha_hora|date:"h:i A" }}</small>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="user-avatar" style="width: 32px; height: 32px; font-size: 11px;">
+                                {% if log.usuario %}
+                                {{ log.usuario.first_name|first|upper }}{{ log.usuario.last_name|first|upper }}
+                                {% else %}
+                                ?
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 13px;">
+                                    {% if log.usuario %}
+                                    {{ log.usuario.get_full_name|default:log.usuario.username }}
+                                    {% else %}
+                                    Anónimo / Sistema
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-muted);">
+                                    @{{ log.usuario.username|default:"---" }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge {% if log.modulo == 'Seguridad' %}badge-ur{% elif log.modulo == 'Tareas' %}badge-ep{% else %}badge-ca{% endif %}">
+                            {{ log.modulo }}
+                        </span>
+                    </td>
+                    <td style="max-width: 400px; line-height: 1.4;">
+                        {{ log.actividad }}
+                    </td>
+                    <td>
+                        <code style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">
+                            {{ log.ip|default:"---" }}
+                        </code>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <h3>No hay registros encontrados</h3>
+                            <p>No se encontraron entradas en la bitácora con los filtros aplicados.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if modulo_actual %}&modulo={{ modulo_actual }}{% endif %}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if q %}&q={{ q }}{% endif %}{% if modulo_actual %}&modulo={{ modulo_actual }}{% endif %}">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if modulo_actual %}&modulo={{ modulo_actual }}{% endif %}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

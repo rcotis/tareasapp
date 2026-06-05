@@ -16,6 +16,7 @@ urlpatterns = [
 
     # Tareas
     path('tareas/', views.lista_tareas, name='lista_tareas'),
+    path('tareas/reporte-pdf/', views.reporte_tareas_pdf, name='reporte_tareas_pdf'),
     path('tareas/nueva/', views.crear_tarea, name='crear_tarea'),
     path('tareas/<int:pk>/', views.detalle_tarea, name='detalle_tarea'),
     path('tareas/<int:pk>/editar/', views.editar_tarea, name='editar_tarea'),
@@ -30,8 +31,10 @@ urlpatterns = [
     # Usuarios
     path('usuarios/', views.lista_usuarios, name='lista_usuarios'),
     path('usuarios/cambiar-rol/<int:user_id>/', views.cambiar_rol_usuario, name='cambiar_rol_usuario'),
-    path('personal/<int:pk>/vincular-usuario/', views.vincular_usuario_personal, name='vincular_usuario_personal'),
-
+    path('usuarios/vincular/<int:pk>/', views.vincular_usuario_personal, name='vincular_usuario_personal'),
+    
+    # Bitácora
+    path('bitacora/', views.lista_bitacora, name='lista_bitacora'),
 
     # AJAX
     path('ajax/parroquias/', views.cargar_parroquias, name='cargar_parroquias'),

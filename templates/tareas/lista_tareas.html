@@ -16,9 +16,12 @@
     <div class="filter-group">
         <label>Estado</label>
         <select name="estado" class="form-select">
-            <option value="">Todos</option>
+            <option value="" {% if filtros.estado == '' %}selected{% endif %}>Activas (Sin completar)</option>
+            <option value="todas" {% if filtros.estado == 'todas' %}selected{% endif %}>Todas</option>
             {% for val, label in estado_choices %}
-            <option value="{{ val }}" {% if filtros.estado == val %}selected{% endif %}>{{ label }}</option>
+                {% if val != 'EL' %}
+                <option value="{{ val }}" {% if filtros.estado == val %}selected{% endif %}>{{ label }}</option>
+                {% endif %}
             {% endfor %}
         </select>
     </div>
@@ -31,15 +34,7 @@
             {% endfor %}
         </select>
     </div>
-    <div class="filter-group">
-        <label>Municipio</label>
-        <select name="municipio" class="form-select">
-            <option value="">Todos</option>
-            {% for m in municipios %}
-            <option value="{{ m.id }}" {% if filtros.municipio == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nombre }}</option>
-            {% endfor %}
-        </select>
-    </div>
+
     <div class="filter-group" style="justify-content:center;padding-bottom:10px">
         <label class="form-check-label" style="display:flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" name="solo_mias" class="form-check-input" {% if filtros.solo_mias %}checked{% endif %}>
@@ -58,9 +53,14 @@
         <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px"></i>
             {{ page_obj.paginator.count }} tarea{{ page_obj.paginator.count|pluralize }} encontrada{{ page_obj.paginator.count|pluralize }}
         </h3>
-        <a href="{% url 'tareas:crear_tarea' %}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> Nueva Tarea
-        </a>
+        <div style="display:flex;gap:8px">
+            <a href="{% url 'tareas:reporte_tareas_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-secondary btn-sm" target="_blank">
+                <i class="fas fa-file-pdf" style="color:#dc2626"></i> Reporte PDF
+            </a>
+            <a href="{% url 'tareas:crear_tarea' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Nueva Tarea
+            </a>
+        </div>
     </div>
     {% if page_obj %}
     <div class="table-wrapper">
@@ -112,9 +112,9 @@
                     </div>
                     <div style="font-size: 10px; font-weight: 600; text-align: center; margin-top: 2px;">{{ t.porcentaje_avance }}%</div>
                 </td>
-                <td style="font-size:13px">{{ t.fecha_inicio_planificada|date:"d/m/Y" }}</td>
+                <td style="font-size:13px">{{ t.fecha_inicio_planificada|date:"d/m/Y H:i" }}</td>
                 <td style="font-size:13px;{% if t.esta_vencida %}color:var(--danger);font-weight:600{% endif %}">
-                    {{ t.fecha_fin_planificada|date:"d/m/Y" }}
+                    {{ t.fecha_fin_planificada|date:"d/m/Y H:i" }}
                 </td>
                 <td style="font-size:13px">
                     {% if t.fecha_fin_real %}

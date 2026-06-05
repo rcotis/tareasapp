@@ -732,15 +732,22 @@
             <a href="{% url 'tareas:cambio_password' %}" class="nav-item {% if request.resolver_match.url_name == 'cambio_password' %}active{% endif %}">
                 <i class="fas fa-key"></i> Cambiar Contraseña
             </a>
-{% if user.is_staff %}
+{% if user.is_staff or personal.es_coordinador or personal.rol == 'ADMIN' %}
             <div class="nav-section">Administración</div>
+            {% if user.is_staff or personal.rol == 'ADMIN' %}
             <a href="{% url 'tareas:lista_usuarios' %}" class="nav-item {% if request.resolver_match.url_name == 'lista_usuarios' %}active{% endif %}">
                 <i class="fas fa-user-shield"></i> Gestión de Usuarios
             </a>
+            {% endif %}
+            <a href="{% url 'tareas:lista_bitacora' %}" class="nav-item {% if request.resolver_match.url_name == 'lista_bitacora' %}active{% endif %}">
+                <i class="fas fa-history"></i> Bitácora
+            </a>
+            {% if user.is_staff %}
             <a href="/admin/" class="nav-item">
                 <i class="fas fa-cog"></i> Panel Admin
             </a>
             {% endif %}
+{% endif %}
         </nav>
         <div class="sidebar-footer">
             <div class="user-card">
