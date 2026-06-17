@@ -31,6 +31,7 @@ urlpatterns = [
     # Usuarios
     path('usuarios/', views.lista_usuarios, name='lista_usuarios'),
     path('usuarios/cambiar-rol/<int:user_id>/', views.cambiar_rol_usuario, name='cambiar_rol_usuario'),
+    path('usuarios/restablecer-password/<int:user_id>/', views.restablecer_password_usuario, name='restablecer_password_usuario'),
     path('usuarios/vincular/<int:pk>/', views.vincular_usuario_personal, name='vincular_usuario_personal'),
     
     # Bitácora

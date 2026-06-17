@@ -74,11 +74,17 @@ class TareaForm(forms.ModelForm):
                 except Personal.DoesNotExist:
                     pass
 
-        # Determinar si el usuario está en los grupos "coordinadores 3" o "coordinadores 4"
-        es_coordinador_3_o_4 = False
-        if self.usuario and self.usuario.id:
-            if self.usuario.is_superuser or self.usuario.groups.filter(name__in=['coordinadores 3', 'coordinadores 4']).exists():
-                es_coordinador_3_o_4 = True
+        # Determinar si el usuario es Administrador (rol ADMIN, is_superuser, o is_staff)
+        self.es_administrador = False
+        if self.usuario:
+            if self.usuario.is_superuser or self.usuario.is_staff:
+                self.es_administrador = True
+            else:
+                try:
+                    if self.usuario.personal.rol == Personal.Rol.ADMIN:
+                        self.es_administrador = True
+                except Personal.DoesNotExist:
+                    pass
 
         # Formatear ahora en el formato que espera datetime-local
         ahora_str = timezone.now().strftime('%Y-%m-%dT%H:%M')
@@ -116,25 +122,40 @@ class TareaForm(forms.ModelForm):
                 self.fields['fecha_inicio_planificada'].widget.attrs['readonly'] = True
                 self.fields['fecha_inicio_planificada'].disabled = True
             
-            # 2. La fecha de culminación solo la pueden cambiar los del grupo coordinadores 3 y 4 (y superuser)
-            if not es_coordinador_3_o_4:
+            # 2. La fecha de culminación solo la pueden cambiar los administradores
+            if not self.es_administrador:
                 if 'fecha_fin_planificada' in self.fields:
                     self.fields['fecha_fin_planificada'].widget.attrs['readonly'] = True
                     self.fields['fecha_fin_planificada'].disabled = True
             
-            # 3. La fecha de finalización real solo la puede cambiar el supervisor/admin
-            if not self.es_supervisor_o_admin:
-                if 'fecha_fin_real' in self.fields:
-                    self.fields['fecha_fin_real'].widget.attrs['readonly'] = True
-                    self.fields['fecha_fin_real'].disabled = True
+            # 3. La fecha de finalización real no la puede cambiar ningún usuario (se asigna automáticamente)
+            if 'fecha_fin_real' in self.fields:
+                self.fields['fecha_fin_real'].widget.attrs['readonly'] = True
+                self.fields['fecha_fin_real'].disabled = True
                 
-                # 4. Los usuarios normales no pueden reasignar tareas ni cambiar el departamento
+            # 4. Los usuarios normales no pueden reasignar tareas ni cambiar el departamento
+            if not self.es_supervisor_o_admin:
                 if 'asignada_a' in self.fields:
                     self.fields['asignada_a'].disabled = True
                     self.fields['asignada_a'].widget.attrs['readonly'] = True
                 if 'departamento' in self.fields:
                     self.fields['departamento'].disabled = True
                     self.fields['departamento'].widget.attrs['readonly'] = True
+
+        # Filtrar choices de estado si no es administrador
+        if 'estado' in self.fields:
+            if not self.es_administrador:
+                # Si la tarea ya está completada, deshabilitar el campo estado
+                # para que no puedan cambiarlo a otra cosa tampoco.
+                if self.instance.pk and self.instance.estado == Tarea.Estado.COMPLETADA:
+                    self.fields['estado'].disabled = True
+                    self.fields['estado'].widget.attrs['readonly'] = True
+                else:
+                    # Excluir 'CO' (Completada) del listado de opciones
+                    self.fields['estado'].choices = [
+                        choice for choice in self.fields['estado'].choices
+                        if choice[0] != Tarea.Estado.COMPLETADA
+                    ]
 
         # Limitar los departamentos y personal visibles según el usuario
         if self.usuario and not self.usuario.is_superuser:
@@ -180,26 +201,47 @@ class TareaForm(forms.ModelForm):
         fin = cleaned_data.get('fecha_fin_planificada')
         ff_real = cleaned_data.get('fecha_fin_real')
         porcentaje = cleaned_data.get('porcentaje_avance', 0)
+        estado = cleaned_data.get('estado')
 
-        # Lógica de porcentaje para empleados (máximo 99%)
-        if not self.es_supervisor_o_admin:
+        from django.utils import timezone
+
+        # Lógica de porcentaje para no administradores (máximo 99%)
+        if not self.es_administrador:
             if porcentaje > 99:
                 cleaned_data['porcentaje_avance'] = 99
-                # Opcional: lanzar error si se prefiere no truncar automáticamente
-                # raise forms.ValidationError('Solo un supervisor puede marcar la tarea al 100% mediante la fecha real.')
+                porcentaje = 99
 
-        # Lógica de cierre automático por supervisor
-        if ff_real:
-            # Si se pone fecha real, forzar 100% y estado Completada
+        # Si el administrador marca 100% de avance, forzar estado a COMPLETADA
+        if self.es_administrador and porcentaje == 100 and estado != Tarea.Estado.COMPLETADA:
+            cleaned_data['estado'] = Tarea.Estado.COMPLETADA
+            estado = Tarea.Estado.COMPLETADA
+
+        # Si el administrador ingresa una fecha real manualmente, forzar estado COMPLETADA y 100%
+        if self.es_administrador and ff_real and estado != Tarea.Estado.COMPLETADA:
+            cleaned_data['estado'] = Tarea.Estado.COMPLETADA
+            estado = Tarea.Estado.COMPLETADA
             cleaned_data['porcentaje_avance'] = 100
-            cleaned_data['estado'] = 'CO'
-        elif porcentaje == 100 and not ff_real:
-            # Si se intenta poner 100% sin fecha real (y es supervisor), pedir fecha real
-            # o simplemente no permitir el 100% sin fecha real
-            if self.es_supervisor_o_admin:
-                raise forms.ValidationError('Para marcar el 100% de avance debe indicar la Fecha de finalización real.')
+            porcentaje = 100
+
+        # Lógica de sincronización de fecha_fin_real con estado COMPLETADA
+        if estado == Tarea.Estado.COMPLETADA:
+            if not self.instance.pk or self.instance.estado != Tarea.Estado.COMPLETADA:
+                # Cambió a completada ahora
+                cleaned_data['fecha_fin_real'] = timezone.now()
+                cleaned_data['porcentaje_avance'] = 100
             else:
-                 cleaned_data['porcentaje_avance'] = 99
+                # Ya era completada
+                cleaned_data['porcentaje_avance'] = 100
+                if not ff_real:
+                    cleaned_data['fecha_fin_real'] = self.instance.fecha_fin_real or timezone.now()
+        else:
+            # Si el estado cambió de COMPLETADA a otra cosa, limpiar fecha_fin_real
+            if self.instance.pk and self.instance.estado == Tarea.Estado.COMPLETADA:
+                cleaned_data['fecha_fin_real'] = None
+                if porcentaje == 100:
+                    cleaned_data['porcentaje_avance'] = 99
+            elif not self.instance.pk:
+                cleaned_data['fecha_fin_real'] = None
 
         if inicio and fin and fin < inicio:
             raise forms.ValidationError(

@@ -28,9 +28,6 @@
                     </span>
                     {% endif %}
                 </h2>
-                {% if tarea.descripcion %}
-                <p style="color:var(--text-muted);font-size:14px;line-height:1.6">{{ tarea.descripcion }}</p>
-                {% endif %}
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0">
                 <span class="badge badge-{{ tarea.estado|lower }}" style="font-size:13px;padding:6px 14px">
@@ -80,6 +77,30 @@
             </div>
         </div>
     </div>
+    <!-- Descripción y Observaciones -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt" style="color:var(--primary);margin-right:8px"></i>Descripción y Observaciones</h3>
+        </div>
+        <div class="card-body">
+            <div class="detail-item">
+                <div class="detail-label">Descripción</div>
+                {% if tarea.descripcion %}
+                    <div style="font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap">{{ tarea.descripcion }}</div>
+                {% else %}
+                    <span style="color:var(--text-muted);font-style:italic;font-size:13px">Sin descripción.</span>
+                {% endif %}
+            </div>
+            <div class="detail-item" style="margin-bottom: 0;">
+                <div class="detail-label">Observaciones</div>
+                {% if tarea.observaciones %}
+                    <div style="font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap">{{ tarea.observaciones }}</div>
+                {% else %}
+                    <span style="color:var(--text-muted);font-style:italic;font-size:13px">Sin observaciones.</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
     <!-- Fechas -->
     <div class="card">
@@ -113,6 +134,11 @@
                     {% endif %}
                 </div>
             </div>
+            {% if tarea.dias_retraso > 0 %}
+            <div style="color:var(--danger);font-weight:bold;margin-top:12px;font-size:14px;display:flex;align-items:center;gap:6px">
+                <i class="fas fa-exclamation-circle"></i> Retraso: {{ tarea.dias_retraso }} {% if tarea.dias_retraso == 1 %}día{% else %}días{% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -137,16 +163,6 @@
             {% endif %}
         </div>
     </div>
-
-    <!-- Observaciones -->
-    {% if tarea.observaciones %}
-    <div class="card">
-        <div class="card-header"><h3><i class="fas fa-comment-dots" style="color:var(--primary);margin-right:8px"></i>Observaciones</h3></div>
-        <div class="card-body">
-            <p style="font-size:14px;line-height:1.6">{{ tarea.observaciones }}</p>
-        </div>
-    </div>
-    {% endif %}
 
 </div>
 {% endblock %}

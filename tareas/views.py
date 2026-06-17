@@ -853,6 +853,48 @@ def cambiar_rol_usuario(request, user_id):
             messages.error(request, 'Rol no válido.')
             
     return redirect('tareas:lista_usuarios')
+
+
+@login_required
+def restablecer_password_usuario(request, user_id):
+    # Verificación de permisos de administrador
+    es_admin = False
+    try:
+        if request.user.personal.rol == Personal.Rol.ADMIN:
+            es_admin = True
+    except Personal.DoesNotExist:
+        pass
+
+    if not request.user.is_staff and not es_admin:
+        messages.error(request, 'No tienes permisos para realizar esta acción.')
+        return redirect('tareas:dashboard')
+
+    user_to_reset = get_object_or_404(User, id=user_id)
+    
+    # Importar SetPasswordForm de django
+    from django.contrib.auth.forms import SetPasswordForm
+
+    if request.method == 'POST':
+        form = SetPasswordForm(user_to_reset, request.POST)
+        if form.is_valid():
+            form.save()
+            
+            # Registrar en la bitácora
+            Bitacora.objects.create(
+                usuario=request.user,
+                modulo='USUARIOS',
+                actividad=f'Restableció la contraseña del usuario {user_to_reset.username}.'
+            )
+            
+            messages.success(request, f'La contraseña de {user_to_reset.username} ha sido restablecida exitosamente.')
+            return redirect('tareas:lista_usuarios')
+    else:
+        form = SetPasswordForm(user_to_reset)
+
+    return render(request, 'tareas/restablecer_password_usuario.html', {
+        'form': form,
+        'user_to_reset': user_to_reset
+    })
 @login_required
 def vincular_usuario_personal(request, pk):
     # Verificación de permisos de administrador

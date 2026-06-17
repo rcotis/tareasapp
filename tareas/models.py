@@ -322,6 +322,30 @@ class Tarea(models.Model):
             return True
         return False
 
+    @property
+    def dias_retraso(self):
+        """
+        Retorna la cantidad de días de retraso si la tarea está vencida o finalizó con retraso.
+        Si no hay retraso, retorna 0.
+        """
+        from django.utils import timezone
+        import math
+        
+        limite = self.fecha_fin_planificada
+        
+        if self.fecha_fin_real:
+            fin = self.fecha_fin_real
+        elif self.estado not in [self.Estado.COMPLETADA, self.Estado.CANCELADA]:
+            fin = timezone.now()
+        else:
+            return 0
+            
+        if fin > limite:
+            delta = fin - limite
+            segundos = delta.total_seconds()
+            return math.ceil(segundos / 86400)
+        return 0
+
 
 # ============================================================
 # BITÁCORA / AUDITORÍA

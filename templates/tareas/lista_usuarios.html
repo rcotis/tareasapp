@@ -72,23 +72,29 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if usu.personal and usu != request.user %}
-                        <form action="{% url 'tareas:cambiar_rol_usuario' usu.id %}" method="post" class="d-flex gap-1 align-items-center">
-                            {% csrf_token %}
-                            <select name="rol" class="form-select form-select-sm" style="width: auto; font-size: 12px; padding: 2px 5px;">
-                                {% for val, label in rol_choices %}
-                                <option value="{{ val }}" {% if usu.personal.rol == val %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-primary btn-sm" title="Cambiar Rol" style="padding: 2px 8px;">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                        </form>
-                        {% elif usu == request.user %}
-                        <small class="text-muted">Eres tú</small>
-                        {% else %}
-                        <small class="text-muted">-</small>
-                        {% endif %}
+                        <div class="d-flex gap-2 align-items-center" style="display: flex; gap: 8px; align-items: center;">
+                            {% if usu.personal and usu != request.user %}
+                            <form action="{% url 'tareas:cambiar_rol_usuario' usu.id %}" method="post" class="d-flex gap-1 align-items-center" style="display: flex; gap: 4px; align-items: center; margin: 0;">
+                                {% csrf_token %}
+                                <select name="rol" class="form-select form-select-sm" style="width: auto; font-size: 12px; padding: 2px 5px; height: 30px;">
+                                    {% for val, label in rol_choices %}
+                                    <option value="{{ val }}" {% if usu.personal.rol == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm" title="Cambiar Rol" style="padding: 6px 10px; height: 30px; display: inline-flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            
+                            {% if usu != request.user %}
+                            <a href="{% url 'tareas:restablecer_password_usuario' usu.id %}" class="btn btn-outline btn-sm" title="Restablecer Clave" style="padding: 6px 10px; font-size: 12px; color: var(--danger); border-color: var(--danger); background: transparent; height: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; text-decoration: none; border: 1.5px solid var(--danger); border-radius: 8px;">
+                                <i class="fas fa-key"></i> Clave
+                            </a>
+                            {% else %}
+                            <small class="text-muted">Eres tú</small>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
