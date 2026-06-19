@@ -29,6 +29,36 @@
                 });
         }
     });
+
+    // Carga dinámica de personal según el departamento seleccionado
+    const departamentoSelect = document.getElementById('id_departamento');
+    if (departamentoSelect) {
+        departamentoSelect.addEventListener('change', function () {
+            const deptoId = this.value;
+            const asignadaSelect = document.getElementById('id_asignada_a');
+            if (asignadaSelect) {
+                asignadaSelect.innerHTML = '<option value="">Seleccione una persona</option>';
+                if (deptoId) {
+                    fetch(`/ajax/personal-departamento/?departamento_id=${deptoId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.personal && data.personal.length > 0) {
+                                data.personal.forEach(p => {
+                                    const opt = document.createElement('option');
+                                    opt.value = p.id;
+                                    opt.textContent = p.nombre;
+                                    asignadaSelect.appendChild(opt);
+                                });
+                            } else {
+                                asignadaSelect.innerHTML = '<option value="">No hay personal activo en este departamento</option>';
+                            }
+                        });
+                } else {
+                    asignadaSelect.innerHTML = '<option value="">Seleccione un departamento responsable primero</option>';
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}
 

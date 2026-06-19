@@ -39,4 +39,6 @@ urlpatterns = [
 
     # AJAX
     path('ajax/parroquias/', views.cargar_parroquias, name='cargar_parroquias'),
+    path('ajax/personal-departamento/', views.cargar_personal_departamento, name='cargar_personal_departamento'),
 ]
+

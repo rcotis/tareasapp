@@ -570,6 +570,33 @@ def cargar_parroquias(request):
 
 
 # ============================================================
+# AJAX: Cargar personal según departamento seleccionado
+# ============================================================
+
+@login_required
+def cargar_personal_departamento(request):
+    from django.http import JsonResponse
+    departamento_id = request.GET.get('departamento_id')
+    if not departamento_id:
+        return JsonResponse({'personal': []})
+    
+    # Restricción por permisos del usuario para departamentos visibles
+    if not request.user.is_superuser:
+        try:
+            personal_req = request.user.personal
+            dept_ids = personal_req.get_departamentos_visibles()
+            if int(departamento_id) not in dept_ids:
+                return JsonResponse({'personal': []})
+        except (Personal.DoesNotExist, ValueError):
+            return JsonResponse({'personal': []})
+
+    personal_list = Personal.objects.filter(departamento_id=departamento_id, activo=True).order_by('apellidos', 'nombres')
+    data = [{'id': p.id, 'nombre': p.get_nombre_completo()} for p in personal_list]
+    return JsonResponse({'personal': data})
+
+
+
+# ============================================================
 # REGISTRO DE PERSONAL
 # ============================================================
 

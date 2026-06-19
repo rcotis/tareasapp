@@ -201,3 +201,48 @@ class TareaBusinessRulesTestCase(TestCase):
         # Verify password actually changed
         self.normal_user.refresh_from_db()
         self.assertTrue(self.normal_user.check_password('NewSecurePassword123!'))
+
+    def test_ajax_cargar_personal_departamento(self):
+        self.client.force_login(self.admin_user)
+        from django.urls import reverse
+        url = reverse('tareas:cargar_personal_departamento')
+        response = self.client.get(url, {'departamento_id': self.depto.id})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('personal', data)
+        # Check that both personal profiles are returned
+        personal_ids = [p['id'] for p in data['personal']]
+        self.assertIn(self.admin_personal.id, personal_ids)
+        self.assertIn(self.normal_personal.id, personal_ids)
+
+    def test_form_validation_personal_outside_department(self):
+        # Create a second department and personal in it
+        depto_b = Departamento.objects.create(
+            nombre="Recursos Humanos",
+            nivel=Departamento.Nivel.UNIDAD
+        )
+        personal_b = Personal.objects.create(
+            rol=Personal.Rol.USUARIO,
+            nombres="Pedro",
+            apellidos="Perez",
+            cedula="33333333",
+            departamento=depto_b
+        )
+
+        post_data = {
+            'titulo': "Tarea de prueba",
+            'descripcion': "Prueba de validacion de departamento",
+            'prioridad': Tarea.Prioridad.MEDIA,
+            'estado': Tarea.Estado.PENDIENTE,
+            'porcentaje_avance': 0,
+            'asignada_a': personal_b.id, # Assigned to B
+            'departamento': self.depto.id, # But department is A
+            'fecha_inicio_planificada': self.inicio.strftime('%Y-%m-%dT%H:%M'),
+            'fecha_fin_planificada': self.fin_planificada.strftime('%Y-%m-%dT%H:%M'),
+        }
+
+        form = TareaForm(data=post_data, usuario=self.admin_user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('asignada_a', form.errors)
+
+

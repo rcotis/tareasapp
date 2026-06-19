@@ -163,14 +163,41 @@ class TareaForm(forms.ModelForm):
                 personal = self.usuario.personal
                 dept_ids = personal.get_departamentos_visibles()
                 self.fields['departamento'].queryset = Departamento.objects.filter(id__in=dept_ids)
-                self.fields['asignada_a'].queryset = Personal.objects.filter(
+                personal_qs = Personal.objects.filter(
                     departamento__id__in=dept_ids, activo=True
                 ).select_related('usuario', 'departamento')
             except Personal.DoesNotExist:
                 self.fields['departamento'].queryset = Departamento.objects.none()
-                self.fields['asignada_a'].queryset = Personal.objects.none()
+                personal_qs = Personal.objects.none()
         else:
-            self.fields['asignada_a'].queryset = Personal.objects.filter(activo=True).select_related('usuario', 'departamento')
+            personal_qs = Personal.objects.filter(activo=True).select_related('usuario', 'departamento')
+
+        # Filtrar personal según el departamento seleccionado (para AJAX o carga inicial)
+        departamento_id = None
+        if self.instance.pk and self.instance.departamento:
+            departamento_id = self.instance.departamento.id
+        elif 'departamento' in self.data:
+            try:
+                departamento_id = int(self.data.get('departamento'))
+            except (ValueError, TypeError):
+                pass
+        elif not self.instance.pk and 'departamento' in self.fields and self.fields['departamento'].initial:
+            val = self.fields['departamento'].initial
+            if hasattr(val, 'id'):
+                departamento_id = val.id
+            else:
+                try:
+                    departamento_id = int(val)
+                except (ValueError, TypeError):
+                    pass
+
+        if departamento_id:
+            self.fields['asignada_a'].queryset = personal_qs.filter(departamento_id=departamento_id)
+            self.fields['asignada_a'].empty_label = "Seleccione una persona"
+        else:
+            self.fields['asignada_a'].queryset = Personal.objects.none()
+            self.fields['asignada_a'].empty_label = "Seleccione un departamento responsable primero"
+
 
         # Filtrar parroquias según el municipio seleccionado (para AJAX o carga inicial)
         municipio_id = None
@@ -247,7 +274,17 @@ class TareaForm(forms.ModelForm):
             raise forms.ValidationError(
                 'La fecha de culminación planificada no puede ser anterior a la fecha de inicio.'
             )
+
+        # Validar que la persona asignada pertenezca al departamento responsable
+        asignada_a = cleaned_data.get('asignada_a')
+        departamento = cleaned_data.get('departamento')
+        if asignada_a and departamento and asignada_a.departamento != departamento:
+            raise forms.ValidationError(
+                'El trabajador asignado debe pertenecer al departamento responsable.'
+            )
+
         return cleaned_data
+
 
 
 class PersonalForm(forms.ModelForm):
